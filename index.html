@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Twelve-month Databricks workload, AI, compute, and storage sizing planner." />
+    <title>Databricks Workload Estimator</title>
+    <link rel="icon" href="assets/databricks.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Open planner">
+        <span class="brand-mark">
+          <img src="assets/databricks.svg" alt="" />
+        </span>
+        <span><strong>Databricks Workload Estimator</strong><small>12-month capacity & consumption planning</small></span>
+      </a>
+      <nav class="nav-tabs" aria-label="Primary navigation">
+        <button class="nav-tab active" data-page="planner">Planner</button>
+        <button class="nav-tab" data-page="methodology">Methodology</button>
+      </nav>
+      <div class="top-actions">
+        <button class="button ghost" id="resetButton">Reset</button>
+        <button class="button primary" id="exportButton">Export plan</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="page active" id="plannerPage">
+        <div class="hero">
+          <div>
+            <span class="eyebrow">Unified workload planning</span>
+            <h1>Forecast what your Databricks workloads will consume.</h1>
+            <p>Model AI demand, DBUs, compute concurrency, and physical storage independently—then project each workload across the next 12 months.</p>
+          </div>
+          <div class="scenario-control" role="radiogroup" aria-label="Forecast scenario">
+            <span>Demand scenario</span>
+            <div>
+              <button data-scenario="low">Low · 0.7×</button>
+              <button class="active" data-scenario="base">Base · 1.0×</button>
+              <button data-scenario="high">High · 1.5×</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="workload-strip" id="workloadPicker" role="radiogroup" aria-label="Workload to size">
+          <button data-workload="genie-one"><i>G1</i><span><b>Genie One</b><small>Business analytics</small></span></button>
+          <button data-workload="genie-agents"><i>GA</i><span><b>Genie Agents</b><small>Agentic conversations</small></span></button>
+          <button data-workload="genie-code"><i>GC</i><span><b>Genie Code</b><small>Developer agent</small></span></button>
+          <button data-workload="genie-api"><i>API</i><span><b>Genie API</b><small>Programmatic traffic</small></span></button>
+          <button data-workload="aibi"><i>BI</i><span><b>AI/BI</b><small>Dashboards & SQL</small></span></button>
+          <button data-workload="apps"><i>AP</i><span><b>Apps</b><small>Runtime & dependencies</small></span></button>
+          <button data-workload="lakehouse"><i>LH</i><span><b>Lakehouse</b><small>Compute & storage</small></span></button>
+        </div>
+
+        <div class="planner-layout">
+          <aside class="controls-panel">
+            <div class="panel-heading">
+              <div><span class="step">01</span><h2 id="assumptionsTitle">Assumptions</h2></div>
+              <p id="assumptionsDescription"></p>
+            </div>
+            <form id="inputFields" class="dynamic-form"></form>
+            <div class="sidebar-note">
+              <strong>Editable calibration</strong>
+              <p>Rates default to zero when Databricks does not publish a universal conversion. Use your pilot, contract, or system tables.</p>
+            </div>
+          </aside>
+
+          <section class="results-panel">
+            <div class="result-header">
+              <div>
+                <span class="eyebrow" id="resultFamily">Workload forecast</span>
+                <h2 id="resultTitle">12-month sizing result</h2>
+                <p id="resultDescription"></p>
+              </div>
+              <div class="cost-summary">
+                <span>12-month net account cost</span>
+                <strong id="annualCost">Add rates</strong>
+                <small id="month12Cost">Unit forecasts remain available without pricing</small>
+              </div>
+            </div>
+
+            <div class="kpi-grid" id="summaryCards"></div>
+
+            <article class="chart-card">
+              <div class="card-heading">
+                <div><span class="eyebrow">12-month projection</span><h2 id="projectionTitle">Demand growth</h2></div>
+                <div class="chart-key"><span><i></i><b id="chartUnit">Units</b></span></div>
+              </div>
+              <div class="chart-wrap" id="projectionChart" aria-label="Twelve month projection chart"></div>
+            </article>
+
+            <div class="insight-grid">
+              <article class="insight-card">
+                <span class="eyebrow">Sizing recommendation</span>
+                <h3>What this result means</h3>
+                <p id="guidanceText"></p>
+              </article>
+              <article class="insight-card caveat">
+                <span class="eyebrow">Boundary</span>
+                <h3>What not to assume</h3>
+                <p id="caveatText"></p>
+              </article>
+            </div>
+
+            <article class="table-card">
+              <div class="card-heading">
+                <div><span class="eyebrow">Monthly detail</span><h2>Projection breakdown</h2></div>
+                <span class="table-hint">Costs appear after rates are entered</span>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Month</th><th id="primaryColumn">Primary demand</th><th>DBUs</th><th>Storage</th><th>List cost</th><th>Discount</th><th>Net cost</th></tr></thead>
+                  <tbody id="monthRows"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <section class="page methodology-page" id="methodologyPage">
+        <div class="methodology-hero">
+          <span class="eyebrow">Evidence-backed planning</span>
+          <h1>Different workloads require different units.</h1>
+          <p>The planner never silently converts tokens, DBUs, warehouse concurrency, and storage into one another. Every conversion is visible and editable.</p>
+        </div>
+        <div class="method-grid">
+          <article><b>AI</b><h2>Genie products</h2><p>Forecast prompts and weighted token demand. Calibrate tokens to DBUs from a 14–30 day pilot because Databricks does not publish a universal conversion.</p></article>
+          <article><b>BI</b><h2>AI/BI</h2><p>Project interactive and refresh queries. Use p95 runtime for concurrency and measured DBUs per 1,000 queries for serverless planning.</p></article>
+          <article><b>AP</b><h2>Databricks Apps</h2><p>Combine provisioned app instance-hours with separately metered AI and SQL dependencies. Medium is 0.5 DBU/hour; Large is 1 DBU/hour.</p></article>
+          <article><b>LH</b><h2>Lakehouse</h2><p>Project ingestion, compression, medallion amplification, retention, rewrites, copies, metadata, and compute DBUs.</p></article>
+        </div>
+        <section class="formulas-section">
+          <div class="section-heading">
+            <span class="eyebrow">Calculation reference</span>
+            <h2>Formulas behind every estimate</h2>
+            <p>Values are calculated month by month. Month <em>m</em> starts at zero, so Month 1 uses the baseline and Month 12 applies eleven periods of compound growth.</p>
+          </div>
+          <div class="formula-grid">
+            <article class="formula-card">
+              <span>Shared growth model</span>
+              <h3>Monthly demand</h3>
+              <code>Demandₘ = Baseline × Scenario × (1 + Growth%)ᵐ</code>
+              <p>Scenario is 0.7×, 1.0×, or 1.5× for low, base, and high.</p>
+            </article>
+            <article class="formula-card">
+              <span>Genie One · Agents · Code · API</span>
+              <h3>Weighted token demand</h3>
+              <code>Prompts = Users × Prompts/User</code>
+              <code>Context = min(Cap, 1 + Growth/Msg × Avg Prior Msgs)</code>
+              <code>Turns = (1 − Agent Share) + Agent Share × Agent Turns</code>
+              <code>Tokens = Prompts × (Input × Context + Output) × Turns × Surface Factor</code>
+              <p>For API traffic, prompts start from requests/day × active days.</p>
+            </article>
+            <article class="formula-card">
+              <span>Genie calibration</span>
+              <h3>Tokens to DBUs</h3>
+              <code>Genie DBUs = Weighted Tokens / 1M × Observed DBUs per 1M</code>
+              <code>SQL DBUs = Prompts × Queries/Prompt / 1K × Observed SQL DBUs per 1K</code>
+              <p>The conversion is user-supplied because Databricks does not publish a universal token-to-DBU rate.</p>
+            </article>
+            <article class="formula-card">
+              <span>AI/BI</span>
+              <h3>Queries and concurrency</h3>
+              <code>Queries = Viewers × Sessions/Day × Queries/Session × Active Days × Cache Miss% + Refresh Queries</code>
+              <code>Peak Concurrency = Peak QPS × p95 Runtime Seconds</code>
+              <code>Classic/Pro Clusters = ceil(Concurrency / 10 × (1 + Headroom%))</code>
+              <p>Serverless uses Intelligent Workload Management; cluster count is a classic/pro planning indicator.</p>
+            </article>
+            <article class="formula-card">
+              <span>Databricks Apps</span>
+              <h3>Runtime and dependencies</h3>
+              <code>App DBUs = Instances × Hours/Day × Active Days × DBU/Instance-Hour</code>
+              <code>AI Tokens = Requests × (Input Tokens + Output Tokens)</code>
+              <code>Total DBUs = App DBUs + SQL Dependency DBUs</code>
+              <p>Medium uses 0.5 DBU per running instance-hour; Large uses 1 DBU.</p>
+            </article>
+            <article class="formula-card">
+              <span>Lakehouse</span>
+              <h3>Physical storage</h3>
+              <code>New Stored TB = Raw TB × Compression × Layer Amplification</code>
+              <code>Time Travel TB = Active TB × Daily Rewrite% × Deleted Retention Days</code>
+              <code>Physical TB = (Active TB × Copies + Time Travel TB) × (1 + Metadata%)</code>
+              <p>The retention window keeps only monthly additions still covered by the selected policy.</p>
+            </article>
+            <article class="formula-card featured">
+              <span>Commercial model</span>
+              <h3>List price, discount, and net cost</h3>
+              <code>DBU List Cost = DBUs × DBU List Price</code>
+              <code>Total List Cost = DBU Cost + Token Cost + Storage Cost</code>
+              <code>Discount Savings = Total List Cost × Discount Rate</code>
+              <code>Net Cost = Total List Cost − Discount Savings</code>
+              <p>Use SKU, cloud, and region-specific rates from your contract or <code>system.billing.list_prices</code>.</p>
+            </article>
+          </div>
+        </section>
+        <article class="assumptions-card">
+          <div><span class="eyebrow">Calibration loop</span><h2>Replace assumptions with actuals.</h2></div>
+          <ol>
+            <li>Start with a low, base, and high scenario.</li>
+            <li>Run a 14–30 day pilot with representative users.</li>
+            <li>Measure DBUs in <code>system.billing.usage</code> and prices in <code>system.billing.list_prices</code>.</li>
+            <li>Measure Genie activity, SQL query history, AI Gateway tokens, App telemetry, and storage metrics.</li>
+            <li>Recalibrate monthly and investigate forecast variance above 15%.</li>
+          </ol>
+        </article>
+        <article class="references-card">
+          <span class="eyebrow">Official references</span>
+          <div>
+            <a href="https://docs.databricks.com/aws/en/genie/consumption-guide" target="_blank" rel="noreferrer">Genie consumption</a>
+            <a href="https://docs.databricks.com/aws/en/genie/monitor-cost" target="_blank" rel="noreferrer">Genie cost monitoring</a>
+            <a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior" target="_blank" rel="noreferrer">SQL warehouse sizing</a>
+            <a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/compute-size" target="_blank" rel="noreferrer">Apps compute sizes</a>
+            <a href="https://docs.databricks.com/aws/en/ai-gateway/usage-tracking" target="_blank" rel="noreferrer">AI Gateway usage</a>
+            <a href="https://docs.databricks.com/aws/en/tables/size" target="_blank" rel="noreferrer">Table storage metrics</a>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="portfolio-model.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

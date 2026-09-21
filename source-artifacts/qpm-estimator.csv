@@ -1,0 +1,26 @@
+Input Data (per Hour),,,,,
+Peak Hour Usage Stats,,,,,
+Average Number of Users,100,,,,
+Max Number of Users,600,,,,
+Average Number of Interactions (page Views in BI),10,,,,
+Max Number of Interactions (Page views in BI),10,,,,
+Average visit time duration (in minutes),10,,,,
+Adoption Rate (%),100.00%,,,,
+SLA Guarantees (%),99.00%,,,,
+,,,,,
+,,,,,
+Per Minute Concurrent Users Stats,,,,,
+Average number of concurrent users,16.66666667,,,,
+Standard Deviation of Users per Hour,214.9291624,,,,
+Standard Deviation of Users per minute,27.74723555,,,,
+Per minute max concurrent users at given SLA,81.2163891,,,,User Input to change
+,,,,,"Calculated field, do not change"
+QPM Estimation Scenarios,,,,,"QPM Estimation, do not change"
+"Interaction speed with Genie is impacted by 3 factors:
+* Input latency: nb of seconds it takes to formalise a question
+* Genie Latency: nb of seconds it takes to answer a user question
+* Analysis latency: nb of seconds it takes to analyse Genie's resulta before eventually asking a follow-up question",,,,,
+Scenari,Interaction time in seconds,QPM Estimation,,,"Example of BI traffic with global presence and 3 main hubs: Europe, East US and India"
+"Fast - small questions, easy to interpret the results",35,139.2280956,,,
+Standard,60,81.2163891,,,
+"Slow - Complex question, need time to interpret results",65,74.96897456,,,

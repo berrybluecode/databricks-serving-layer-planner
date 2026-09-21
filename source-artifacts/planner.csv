@@ -1,0 +1,57 @@
+Genie API QPM Planner,,,,
+,,,,
+User Input - Please Modify as Needed,,,,
+Calculations - Please Do NOT Change,,,,
+Resulting QPM / Utilisation Metrics - Please Do NOT Change,,,,
+,,,,
+"Usage assumptions (per hour)
+Define how your users behave during an average and peak hour. These inputs shape the base demand before modelling the full day.",,,"Derived metrics
+Calculated values that describe your expected demand profile.",
+"Average users per active hour
+
+The typical number of users active in a non-peak hour. Used to estimate baseline API/Genie load.",10,,"Average concurrent users
+The estimated number of users simultaneously active at any given moment during a typical hour. Calculated from: (Average users per hour × Average session duration) / 60",0.83
+"Peak users in busiest hour
+The maximum number of users active in the busiest hour of the day (your highest concurrency). Determines peak QPM.",50,,"Peak concurrent users
+The maximum number of users simultaneously active during the busiest hour of the day. This determines your theoretical peak demand before scaling by interaction behaviour.",4.17
+"Average visit duration (minutes)
+How long a typical user session lasts. Longer sessions → more concurrent usage.",10,,,
+"Adoption rate (%)
+The percentage of your total population that actually uses the system each hour. Helps scale down large user counts realistically.",50.00%,,"Avg QPM (selected scenario)
+The average number of queries per minute generated during normal load based on your selected interaction style.",0.56
+"Number of peaks per weekday (1, 2, or 3 supported)
+How many traffic spikes your application has per day (e.g., 1 = midday; 2 = morning + afternoon; 3 = morning + noon + evening). Shapes the daily demand curve.",2,,"Peak QPM (selected scenario)
+The expected number of queries per minute during the busiest period of the day, reflecting both peak concurrency and interaction speed.",2.78
+"Peak width (hours)
+Controls how sharp or wide each peak is. Smaller values = sharper spikes. Larger values = broader, flatter peaks.",3,,,
+,,,,
+"Interaction behaviour
+Control how quickly your users issue queries. Scenarios affect overall QPM load.",,,"For chosen QPM reservation
+Shows how your selected reservation performs under your traffic model.",
+"Chosen scenario
+Selects a predefined interaction style (Fast, Standard, Slow).",Standard,,"% queries queued
+The percentage of total daily queries that exceed your reserved QPM capacity and must wait (i.e., should be put in a queue).",0.00%
+"Selected time per query (seconds)
+Automatically filled based on the chosen scenario.
+Represents how long an average interaction takes → affects QPM.",90,,"% time above cap
+The percentage of the day during which demand exceeds your reserved QPM.",0.00%
+,,,"Average utilisation
+How much of your reserved QPM is actually used on average across the entire day (weekday + weekend).",7.73%
+,,,,
+"Scenario
+A scenario represents how quickly your users interact with Genie/API. Specifically,
+how many seconds it takes a user to submit a query, read the answer, and submit the next one.",Time per query (s),Avg QPM,Peak QPM,
+Fast,45,1.11,5.56,
+Standard,90,0.56,2.78,
+Slow,150,0.33,1.67,
+,,,,
+Weekend behaviour,,,,
+Weekend usage (% of weekday),,20.00%,,
+,,,,
+SLA / business preference,,,,
+"Target % of queries WITHOUT queuing
+Your desired SLA. Used only for guidance — not part of core calculations.",,99.99%,,
+,,,,
+"QPM reservation
+The QPM limit you plan to reserve/purchase.
+All queueing, utilisation, and “time above cap” metrics are calculated using this value.",,10,,

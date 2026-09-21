@@ -1,0 +1,92 @@
+"README — Genie API QPM Planner
+"
+Bachar Wehbi Silviu Tofan Lydia Ray
+"1. Purpose of This Tool
+
+This planner helps you estimate the Queries Per Minute (QPM) capacity required to deliver a great user experience for Genie for API-driven applications.
+
+Instead of relying on simple averages or rough heuristics, this model simulates your actual traffic patterns, including:
+- Daily fluctuations (morning, afternoon, global peaks)
+- Session length and interaction timing
+- Query behaviour (fast, standard, slow)
+- Weekend vs weekday usage
+- Human-driven think-time between queries
+
+The goal is to help you choose a QPM reservation that balances:
+- Performance (minimizing queueing)
+- Cost efficiency (avoiding over-provisioning)
+- Real-world user behaviour"
+"2. Why This Matters
+
+Genie and LLM-powered applications behave differently from classic BI dashboards:
+- Users think, type, interpret, and iterate.
+- Queries come in bursts, not evenly spaced.
+- Interaction speed varies drastically between users.
+- Peaks can come from multiple time zones or multiple departments.
+
+Traditional spreadsheet formulas (average users, standard deviation) cannot capture this complexity.
+
+This tool helps teams:
+- Size QPM before adoption or rollout
+- Identify when peaks exceed capacity
+- Avoid user frustration caused by queueing
+- Optimize cost by selecting a reservation that meets SLA needs
+- Communicate QPM needs clearly to procurement or platform teams"
+"3. How the Model Works (High-Level)
+
+This planner combines user-provided inputs with a daily traffic simulation to compute expected demand.
+
+Phase 1 — Base traffic assumptions
+
+You provide:
+- Average + peak users per hour
+- Session duration
+- Number of peaks per day
+- Peak width
+- Weekend scaling
+- Interaction behaviour (Fast / Standard / Slow)
+
+From these, we compute:
+- Average concurrent users
+- Peak concurrent users
+- Avg and Peak QPM per user
+
+Phase 2 — Daily demand modelling
+
+The model constructs a 24-hour demand curve:
+- Gaussian peaks representing load spikes
+- Evenly spaced peak centers
+- Adjustable peak sharpness
+- Separate weekday + weekend curves
+
+This becomes the true demand profile that reflects real behaviour.
+
+Phase 3 — Applying your QPM reservation
+
+You enter the QPM reservation you want to test.
+
+The model evaluates:
+- Where demand exceeds capacity
+- How many queries would queue
+- What percentage of the day you’re over the cap
+- Average utilisation of reserved capacity
+
+This output directly drives SLA decisions.
+
+Phase 4 — Tradeoff Curve (Reservation vs Queueing)
+
+The tool simulates reservation levels from 0 → 200 QPM.
+
+For each reservation level, it computes:
+- % of total queries queued
+- % of time demand exceeds reservation
+- Average utilisation
+
+This produces the Queueing vs QPM Reservation curve, which shows the optimal balance between:
+- Cost (QPM purchased)
+- Performance (user wait times)
+
+This is the single most important visualization for decision-making."
+
+"NOTE - talk about what happens during queues that are long term (e.g. 10+ minutes); can they make recommendations on non-peak hours based on usage
+patterns that we see on usage over time"
