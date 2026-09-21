@@ -4,7 +4,7 @@
   const { WORKLOADS, forecast, formatNumber, formatCompact } = window.PortfolioModel;
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
-  const storageKey = "databricks-workload-sizer-v2";
+  const storageKey = "databricks-serving-layer-planner-v1";
 
   const number = (key, label, unit = "", step = 1, help = "") => ({
     key, label, unit, step, help, type: "number",

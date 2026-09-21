@@ -1,7 +1,7 @@
-# Databricks Workload Estimator
+# Databricks Serving Layer Planner
 
-A browser-based, 12-month scenario planner for Databricks AI, analytics, application,
-compute, and storage workloads.
+A browser-based, 12-month scenario planner for the consumption side of the Databricks
+lakehouse: Genie, AI/BI, Apps, serving compute, and the storage those experiences consume.
 
 > **Planning tool, not a quote.** This project is not an official Databricks pricing
 > calculator. Validate every forecast against your cloud, region, SKU, contract,
@@ -77,8 +77,8 @@ Requirements:
 - Node.js only when running the model tests
 
 ```bash
-git clone https://github.com/berrybluecode/databricks-workload-estimator.git
-cd databricks-workload-estimator
+git clone https://github.com/berrybluecode/databricks-serving-layer-planner.git
+cd databricks-serving-layer-planner
 python3 -m http.server 8770
 ```
 
