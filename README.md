@@ -84,6 +84,28 @@ python3 -m http.server 8770
 
 Open [http://localhost:8770](http://localhost:8770).
 
+## Databricks App
+
+The planner is deployed to the `dqx-app-demo` workspace:
+
+**[Open the Databricks Serving Layer Planner](https://serving-layer-planner-7474659469216989.aws.databricksapps.com)**
+
+Workspace authentication is required. The deployment uses a minimal FastAPI wrapper
+with no SQL warehouse, model endpoint, Lakebase database, or secrets.
+
+```bash
+# Deploy the current directory after uploading it to a workspace source path
+databricks apps deploy serving-layer-planner \
+  --source-code-path /Workspace/Users/<user>/apps/serving-layer-planner \
+  --profile dqx-app-demo
+```
+
+Health endpoint:
+
+```text
+GET /api/health
+```
+
 ## Tests
 
 ```bash
