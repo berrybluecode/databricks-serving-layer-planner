@@ -1,7 +1,11 @@
 (function () {
   "use strict";
 
-  const { WORKLOADS, forecast, formatNumber, formatCompact } = window.PortfolioModel;
+  const { WORKLOADS, DEFAULT_CREDIBILITY_K, forecast, formatNumber, formatCompact } = window.PortfolioModel;
+  const CALIBRATION_KIND = { genie: "genie", aibi: "dashboard", apps: "app" };
+  const KIND_LABEL = { genie: "Genie space", dashboard: "AI/BI dashboard", app: "Databricks App" };
+  let backendAvailable = null;
+  const sourceCache = {};
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const storageKey = "databricks-serving-layer-planner-v2";
@@ -290,6 +294,168 @@
       section.append(title, grid);
       container.appendChild(section);
     });
+    renderCalibrationSection(container);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]
+    ));
+  }
+
+  async function fetchJson(url) {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.detail || `Request failed (${response.status})`);
+    return body;
+  }
+
+  async function checkBackend() {
+    if (backendAvailable !== null) return backendAvailable;
+    try {
+      backendAvailable = (await fetchJson("api/health")).status === "healthy";
+    } catch {
+      backendAvailable = false;
+    }
+    return backendAvailable;
+  }
+
+  function renderCalibrationSection(container) {
+    const kind = CALIBRATION_KIND[WORKLOADS[state.workloadId].family];
+    if (!kind) return;
+    const values = state.values[state.workloadId];
+    const section = document.createElement("section");
+    section.className = "field-group calibration-group";
+    section.innerHTML = `
+      <h3 class="field-group-title">Calibrate from workspace</h3>
+      <p class="calibration-intro">Pull the observed SQL rate for an existing ${KIND_LABEL[kind]} from system tables. The forecast blends it with the preset in proportion to how much evidence exists.</p>
+      <div class="field-grid">
+        <div class="field">
+          <label for="calibrationSource">Observed ${KIND_LABEL[kind]}</label>
+          <div class="input-wrap"><select id="calibrationSource" disabled><option>Checking workspace…</option></select></div>
+        </div>
+        <div class="field">
+          <label for="calibrationDays">Lookback window</label>
+          <div class="input-wrap"><input id="calibrationDays" type="number" min="7" max="90" step="1" class="has-unit" value="${values.calibrationDays || 30}"><span class="input-unit">days</span></div>
+        </div>
+        <div class="field">
+          <label for="credibilityK">Credibility constant k</label>
+          <div class="input-wrap"><input id="credibilityK" type="number" min="1" step="500" class="has-unit" value="${values.credibilityK || DEFAULT_CREDIBILITY_K}"><span class="input-unit">queries</span></div>
+          <small>Observed weight = n ÷ (n + k)</small>
+        </div>
+      </div>
+      <div class="calibration-actions">
+        <button type="button" class="button primary" id="calibrateButton" disabled>Calibrate</button>
+        <button type="button" class="button ghost" id="clearCalibrationButton" ${values.calibration ? "" : "disabled"}>Use preset only</button>
+      </div>
+      <div id="calibrationResult" class="calibration-result"></div>`;
+    container.prepend(section);
+
+    const sourceSelect = section.querySelector("#calibrationSource");
+    const daysInput = section.querySelector("#calibrationDays");
+    const kInput = section.querySelector("#credibilityK");
+    const calibrateButton = section.querySelector("#calibrateButton");
+    const clearButton = section.querySelector("#clearCalibrationButton");
+    const days = () => Math.min(90, Math.max(7, Number(daysInput.value) || 30));
+
+    kInput.addEventListener("input", () => {
+      values.credibilityK = Math.max(1, Number(kInput.value) || DEFAULT_CREDIBILITY_K);
+      renderResults();
+      save();
+    });
+    daysInput.addEventListener("change", () => {
+      values.calibrationDays = days();
+      save();
+      loadSources();
+    });
+    clearButton.addEventListener("click", () => {
+      delete values.calibration;
+      clearButton.disabled = true;
+      renderResults();
+      save();
+      toast("Using complexity preset only");
+    });
+    calibrateButton.addEventListener("click", async () => {
+      const sourceId = sourceSelect.value;
+      if (!sourceId) return;
+      calibrateButton.disabled = true;
+      calibrateButton.textContent = "Calibrating…";
+      try {
+        const params = new URLSearchParams({ kind, source_id: sourceId, days: String(days()) });
+        values.calibration = await fetchJson(`api/calibration/observe?${params}`);
+        clearButton.disabled = false;
+        renderResults();
+        save();
+        toast(`Calibrated from ${values.calibration.label}`);
+      } catch (error) {
+        toast(`Calibration failed: ${error.message}`);
+      } finally {
+        calibrateButton.disabled = false;
+        calibrateButton.textContent = "Calibrate";
+      }
+    });
+
+    async function loadSources() {
+      const workloadId = state.workloadId;
+      sourceSelect.disabled = true;
+      calibrateButton.disabled = true;
+      if (!(await checkBackend())) {
+        sourceSelect.innerHTML = "<option>Available in the Databricks App deployment</option>";
+        return;
+      }
+      sourceSelect.innerHTML = "<option>Loading observed workloads…</option>";
+      const cacheKey = `${kind}:${days()}`;
+      try {
+        sourceCache[cacheKey] ||= (await fetchJson(
+          `api/calibration/sources?${new URLSearchParams({ kind, days: String(days()) })}`
+        )).sources;
+      } catch (error) {
+        sourceSelect.innerHTML = `<option>${escapeHtml(error.message)}</option>`;
+        return;
+      }
+      if (workloadId !== state.workloadId) return;
+      const sources = sourceCache[cacheKey];
+      if (!sources.length) {
+        sourceSelect.innerHTML = `<option>No ${KIND_LABEL[kind]} SQL in the last ${days()} days</option>`;
+        return;
+      }
+      sourceSelect.innerHTML = sources.map((source) =>
+        `<option value="${escapeHtml(source.source_id)}">${escapeHtml(source.label)} · ${formatCompact(source.queries)} queries</option>`
+      ).join("");
+      if (values.calibration && sources.some((source) => source.source_id === values.calibration.source_id)) {
+        sourceSelect.value = values.calibration.source_id;
+      }
+      sourceSelect.disabled = false;
+      calibrateButton.disabled = false;
+    }
+    loadSources();
+  }
+
+  function renderCalibrationResult(result) {
+    const target = $("#calibrationResult");
+    if (!target) return;
+    const blend = result.calibration;
+    const observation = blend?.observation;
+    if (!observation) {
+      target.innerHTML = `<p class="calibration-empty">No observation applied · forecast uses the preset rate${
+        blend ? ` of ${formatNumber(blend.presetRate ?? blend.effectiveDbuPer1000Queries, 1)} DBU / 1K` : ""
+      }.</p>`;
+      return;
+    }
+    const range = result.annualCostRange;
+    target.innerHTML = `
+      <div class="calibration-source"><strong>${escapeHtml(observation.label)}</strong><span>${formatCompact(observation.queries)} queries over ${observation.active_days} active days</span></div>
+      <dl class="calibration-stats">
+        <div><dt>Observed</dt><dd>${formatNumber(observation.dbu_per_1k, 1)} DBU / 1K</dd></div>
+        <div><dt>Daily P10–P90</dt><dd>${formatNumber(observation.p10_dbu_per_1k, 0)}–${formatNumber(observation.p90_dbu_per_1k, 0)}</dd></div>
+        <div><dt>Preset</dt><dd>${formatNumber(blend.presetRate, 1)} DBU / 1K</dd></div>
+        <div><dt>Observed weight</dt><dd>${formatNumber(blend.weight * 100, 0)}%</dd></div>
+        <div class="wide"><dt>Blended rate used</dt><dd>${formatNumber(blend.rate, 1)} DBU / 1K</dd></div>
+        ${range && result.hasPricing ? `<div class="wide"><dt>12-month cost band</dt><dd>${formatCurrency(range.low)} – ${formatCurrency(range.high)}</dd></div>` : ""}
+      </dl>
+      <small>Observed ${formatNumber(observation.queries_per_day, 0)} queries/day, ${formatNumber(observation.p95_runtime_s, 1)} s p95 runtime${
+        observation.app_dbu_per_day ? `, ${formatNumber(observation.app_dbu_per_day, 1)} app runtime DBU/day` : ""
+      }. Recalibrate monthly; investigate if the observed rate moves more than 15%.</small>`;
   }
 
   function renderProjectionChart(result) {
@@ -337,6 +503,10 @@
           result.annualDiscountSavings
         )} discount · ${formatCurrency(result.month12Cost)} month 12 net`
       : "Unit forecasts remain available without pricing";
+    if (result.hasPricing && result.annualCostRange) {
+      $("#month12Cost").textContent += ` · P10–P90 ${formatCurrency(result.annualCostRange.low)}–${formatCurrency(result.annualCostRange.high)}`;
+    }
+    renderCalibrationResult(result);
 
     $("#summaryCards").innerHTML = result.summary.map((item) =>
       `<article class="kpi"><span>${item.label}</span><strong>${item.value}</strong><small>Base on current assumptions</small></article>`

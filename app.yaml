@@ -10,3 +10,6 @@ command:
   - "--proxy-headers"
   - "--forwarded-allow-ips"
   - "*"
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse

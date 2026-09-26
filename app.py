@@ -1,12 +1,14 @@
-"""Production wrapper for the static Serving Layer Planner."""
+"""Production wrapper for the Serving Layer Planner."""
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
+import calibration
+
 APP_NAME = "serving-layer-planner"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 STATIC_ROOT = Path(__file__).resolve().parent
 
 app = FastAPI(
@@ -25,6 +27,34 @@ async def health() -> dict[str, str]:
         "status": "healthy",
         "version": APP_VERSION,
     }
+
+
+def _validate_kind(kind: str) -> str:
+    if kind not in calibration.KINDS:
+        raise HTTPException(status_code=400, detail=f"kind must be one of {sorted(calibration.KINDS)}")
+    return kind
+
+
+@app.get("/api/calibration/sources")
+def calibration_sources(kind: str, days: int = Query(30, ge=1, le=90)) -> dict:
+    """List observed workloads that can calibrate a forecast."""
+    try:
+        return {"sources": calibration.list_sources(_validate_kind(kind), days)}
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
+@app.get("/api/calibration/observe")
+def calibration_observe(kind: str, source_id: str, days: int = Query(30, ge=1, le=90)) -> dict:
+    """Return observed SQL rate, volume, and variability for one workload."""
+    try:
+        return calibration.observe(_validate_kind(kind), source_id, days)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 # Mount last so API routes take precedence while all existing static paths remain intact.

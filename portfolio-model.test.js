@@ -63,6 +63,25 @@ const writebackApp = forecast("apps", {
 assert.ok(writebackApp.rows[0].sqlDbu > apps.rows[0].sqlDbu);
 assert.equal(writebackApp.rows[0].lakebaseDbu, 1000);
 
+const observation = {
+  label: "dqx-studio-v2", queries: 100000, dbu_per_1k: 49.5,
+  p10_dbu_per_1k: 14.3, p90_dbu_per_1k: 102.2,
+};
+const calibratedApp = forecast("apps", { ...WORKLOADS.apps.defaults, calibration: observation });
+const expectedWeight = 100000 / 105000;
+assert.ok(Math.abs(calibratedApp.calibration.weight - expectedWeight) < 1e-9);
+assert.ok(Math.abs(calibratedApp.calibration.rate - (expectedWeight * 49.5 + (1 - expectedWeight) * 8)) < 1e-9);
+assert.ok(calibratedApp.annualCostRange.low < calibratedApp.annualCost);
+assert.ok(calibratedApp.annualCostRange.high > calibratedApp.annualCost);
+assert.equal(apps.annualCostRange, null, "Uncalibrated forecasts have no observed band");
+
+const thinEvidence = forecast("aibi", {
+  ...WORKLOADS.aibi.defaults,
+  calibration: { label: "pilot", queries: 50, dbu_per_1k: 219, p10_dbu_per_1k: 60, p90_dbu_per_1k: 400 },
+});
+assert.ok(thinEvidence.calibration.weight < 0.01, "Small samples barely move the preset");
+assert.ok(thinEvidence.calibration.rate < 45);
+
 const lakehouse = forecast("lakehouse");
 assert.ok(lakehouse.rows[11].storageTb > lakehouse.rows[0].storageTb);
 assert.ok(lakehouse.rows[11].totalDbu > lakehouse.rows[0].totalDbu);

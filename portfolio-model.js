@@ -134,18 +134,51 @@
     return { listCost, discountSavings, cost: listCost - discountSavings };
   }
 
+  const DEFAULT_CREDIBILITY_K = 5000;
+  const BAND_FIELDS = { p10: "p10_dbu_per_1k", p90: "p90_dbu_per_1k" };
+
+  function blendRate(presetRate, config) {
+    const observation = config.calibration;
+    const observedQueries = observation ? n(observation.queries) : 0;
+    if (!observedQueries) {
+      return { presetRate, observedRate: null, weight: 0, rate: presetRate, observation: null };
+    }
+    const k = Math.max(1, n(config.credibilityK, DEFAULT_CREDIBILITY_K));
+    const weight = observedQueries / (observedQueries + k);
+    const field = BAND_FIELDS[config.calibrationBand] || "dbu_per_1k";
+    const observedRate = n(observation[field], n(observation.dbu_per_1k));
+    return {
+      presetRate,
+      observedRate,
+      weight,
+      rate: weight * observedRate + (1 - weight) * presetRate,
+      observation,
+    };
+  }
+
   function complexityRate(config) {
     const profile = COMPLEXITY_PROFILES[config.queryComplexity] || COMPLEXITY_PROFILES.medium;
     const scannedGb = Math.max(0.001, n(config.dataScannedGbPerQuery, profile.referenceGbPerQuery));
     const volumeFactor = Math.max(0.25, Math.sqrt(scannedGb / profile.referenceGbPerQuery));
+    const blend = blendRate(profile.dbuPer1000Queries * volumeFactor, config);
     return {
       profile,
       volumeFactor,
-      effectiveDbuPer1000Queries: profile.dbuPer1000Queries * volumeFactor,
+      ...blend,
+      effectiveDbuPer1000Queries: blend.rate,
     };
   }
 
+  function rateLabel(complexity) {
+    return complexity.observation
+      ? `Calibrated SQL rate (${formatNumber(complexity.weight * 100, 0)}% observed)`
+      : `${complexity.profile.label} SQL profile`;
+  }
+
   function genieForecast(config, scenarioMultiplier) {
+    const presetSqlRate = n(config.sqlDbuPer1000Queries) ||
+      (config.calibration ? COMPLEXITY_PROFILES.medium.dbuPer1000Queries : 0);
+    const sqlRate = blendRate(presetSqlRate, config);
     const rows = MONTH_NAMES.map((month, index) => {
       const promptsBase = config.requestsPerDay
         ? n(config.requestsPerDay) * n(config.activeDays, DAYS_PER_MONTH)
@@ -166,7 +199,7 @@
         n(config.surfaceMultiplier, 1);
       const genieDbu = (weightedTokens / 1_000_000) * n(config.dbuPerMillionTokens);
       const sqlQueries = prompts * n(config.queriesPerPrompt);
-      const sqlDbu = (sqlQueries / 1000) * n(config.sqlDbuPer1000Queries);
+      const sqlDbu = (sqlQueries / 1000) * sqlRate.rate;
       const totalDbu = genieDbu + sqlDbu;
       const { listCost, discountSavings, cost } = discountedCost(config, totalDbu);
       const peakRpm = config.requestsPerDay
@@ -211,6 +244,7 @@
         : "Token demand is a planning estimate. Enter observed DBUs per million weighted tokens from a 14–30 day pilot to forecast billable usage.",
       caveat:
         "Databricks bills Genie from underlying LLM consumption in DBUs and does not publish a token-to-DBU conversion. Genie API is a channel into Genie Agents, not a separate billing surface.",
+      calibration: sqlRate,
     };
   }
 
@@ -250,14 +284,15 @@
       summary: [
         { label: "12-month SQL queries", value: formatCompact(sum(rows, "queries")) },
         { label: "Month 12 peak concurrency", value: formatNumber(rows[11].concurrentQueries, 1) },
-        { label: `${complexity.profile.label} SQL profile`, value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
+        { label: rateLabel(complexity), value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
         {
           label: "Estimated SQL DBUs",
           value: formatCompact(sum(rows, "totalDbu")),
         },
       ],
-      guidance:
-        `Start with a Medium serverless SQL warehouse. This estimate uses the ${complexity.profile.label} query profile and ${formatNumber(complexity.volumeFactor, 2)}× data-volume factor; validate against Peak Queued Queries and billing usage.`,
+      guidance: complexity.observation
+        ? `Start with a Medium serverless SQL warehouse. The SQL rate blends ${formatNumber(complexity.observedRate, 1)} DBU / 1K observed on ${complexity.observation.label} with the ${formatNumber(complexity.presetRate, 1)} DBU / 1K ${complexity.profile.label} preset.`
+        : `Start with a Medium serverless SQL warehouse. This estimate uses the ${complexity.profile.label} query profile and ${formatNumber(complexity.volumeFactor, 2)}× data-volume factor; validate against Peak Queued Queries and billing usage.`,
       caveat:
         "Complexity presets are planning benchmarks, not SKU guarantees. Recalibrate DBUs per 1,000 queries from a representative workspace and keep dashboard-only traffic separate from app or ETL traffic on shared warehouses.",
       calibration: complexity,
@@ -312,10 +347,11 @@
         { label: "12-month app DBUs", value: formatCompact(sum(rows, "appDbu")) },
         { label: "12-month SQL DBUs", value: formatCompact(sum(rows, "sqlDbu")) },
         { label: "12-month Lakebase DBUs", value: formatCompact(sum(rows, "lakebaseDbu")) },
-        { label: `${complexity.profile.label} SQL profile`, value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
+        { label: rateLabel(complexity), value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
       ],
-      guidance:
-        `${formatNumber(cpu, 0)} vCPU and ${formatNumber(memory, 0)} GB are provisioned for the App. SQL is estimated from users × requests × queries using the ${complexity.profile.label} profile; Lakebase and AI are included only when enabled.`,
+      guidance: complexity.observation
+        ? `${formatNumber(cpu, 0)} vCPU and ${formatNumber(memory, 0)} GB are provisioned for the App. SQL blends ${formatNumber(complexity.observedRate, 1)} DBU / 1K observed on ${complexity.observation.label} with the ${formatNumber(complexity.presetRate, 1)} DBU / 1K ${complexity.profile.label} preset${n(complexity.observation.app_dbu_per_day) ? `; that app's runtime billed ${formatNumber(complexity.observation.app_dbu_per_day, 1)} DBU / day` : ""}.`
+        : `${formatNumber(cpu, 0)} vCPU and ${formatNumber(memory, 0)} GB are provisioned for the App. SQL is estimated from users × requests × queries using the ${complexity.profile.label} profile; Lakebase and AI are included only when enabled.`,
       caveat:
         "Medium Apps use 0.5 DBU per running instance-hour; Large uses 1 DBU. Query-complexity presets must be calibrated against system.query.history and system.billing.usage, especially when a warehouse is shared with ETL.",
       calibration: complexity,
@@ -415,6 +451,13 @@
     const annualDiscountSavings = sum(result.rows, "discountSavings");
     const annualCost = sum(result.rows, "cost");
     const annualDbu = sum(result.rows, "totalDbu");
+    let annualCostRange = null;
+    if (config.calibration && !config.calibrationBand) {
+      const [low, high] = ["p10", "p90"].map(
+        (band) => forecast(workloadId, { ...config, calibrationBand: band }, scenario).annualCost
+      );
+      annualCostRange = { low: Math.min(low, high), high: Math.max(low, high) };
+    }
     return {
       ...result,
       workload,
@@ -425,6 +468,7 @@
       annualListCost,
       annualDiscountSavings,
       annualDbu,
+      annualCostRange,
       month12ListCost: result.rows[11].listCost,
       month12DiscountSavings: result.rows[11].discountSavings,
       month12Cost: result.rows[11].cost,
@@ -450,6 +494,7 @@
     WORKLOADS,
     COMPLEXITY_PROFILES,
     DEFAULT_DBU_PRICE,
+    DEFAULT_CREDIBILITY_K,
     SCENARIO_MULTIPLIERS,
     forecast,
     formatNumber,

@@ -185,6 +185,14 @@
               <p>Medium uses 0.5 DBU per running instance-hour; Large uses 1 DBU. Lakebase is enabled only for write-back, state, or OLTP patterns.</p>
             </article>
             <article class="formula-card">
+              <span>Workspace calibration</span>
+              <h3>Observed rate, weighted by evidence</h3>
+              <code>Source DBU = Σ Warehouse DBU/day × Source Task-ms ÷ Warehouse Task-ms</code>
+              <code>w = Observed Queries ÷ (Observed Queries + k)</code>
+              <code>Rate = w × Observed DBU/1K + (1 − w) × Preset DBU/1K</code>
+              <p>Task-time attribution removes shared-warehouse distortion. P10 and P90 daily rates produce the cost band. k defaults to 5,000 queries.</p>
+            </article>
+            <article class="formula-card">
               <span>Lakehouse</span>
               <h3>Physical storage</h3>
               <code>New Stored TB = Raw TB × Compression × Layer Amplification</code>

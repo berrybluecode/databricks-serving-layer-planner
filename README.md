@@ -56,7 +56,9 @@ It only converts them when the user supplies an explicit calibration or price.
 - Monthly projection table and interactive SVG chart
 - JSON export containing assumptions, formulas, projections, and caveats
 - Responsive desktop and mobile layouts
-- No backend, build step, tracking, or external runtime dependency
+- Workspace calibration from system tables with task-time attribution, credibility
+  blending, and a P10–P90 cost band (Databricks App only)
+- Static build needs no backend, build step, tracking, or external runtime dependency
 
 ## Screenshots
 
@@ -94,8 +96,9 @@ The planner is deployed to the `dqx-app-demo` workspace:
 
 **[Open the Databricks Serving Layer Planner](https://serving-layer-planner-7474659469216989.aws.databricksapps.com)**
 
-Workspace authentication is required. The deployment uses a minimal FastAPI wrapper
-with no SQL warehouse, model endpoint, Lakebase database, or secrets.
+Workspace authentication is required. The deployment is a FastAPI wrapper that also
+serves the read-only calibration API over `system.billing` and `system.query`
+through one SQL warehouse. It uses no model endpoint, Lakebase database, or secrets.
 
 ```bash
 # Deploy the current directory after uploading it to a workspace source path
@@ -297,6 +300,51 @@ Net account cost = Total list cost − Discount savings
 Prices default to zero. Enter SKU-, cloud-, and region-specific rates from your
 contract or `system.billing.list_prices`.
 
+## Workspace calibration
+
+When the planner runs as a Databricks App, the **Calibrate from workspace** panel
+(Apps, AI/BI, and Genie) replaces guesswork with observed workload data.
+
+1. **Attribute warehouse DBUs to the source.** Shared warehouses make a naive
+   `warehouse DBU ÷ queries` rate meaningless. Each day's warehouse DBUs are
+   split by task time:
+
+   ```text
+   Source DBU = Σ days ( Warehouse DBU_day × Source task-ms_day / Warehouse task-ms_day )
+   ```
+
+   Sources are classified from `system.query.history`: dashboards by
+   `query_source.dashboard_id`, Genie by `query_source.genie_space_id`, and Apps by
+   `executed_as` = the App's service-principal client ID (which equals `app_id`
+   in `system.billing.usage`).
+
+2. **Blend observation with the preset by credibility.**
+
+   ```text
+   w = n / (n + k)                      n = observed queries, k = 5,000 by default
+   Rate = w × Observed DBU/1K + (1 − w) × Preset DBU/1K
+   ```
+
+   A pilot with 50 queries barely moves the preset. An app with 100,000 queries
+   is about 95% observed.
+
+3. **Show uncertainty.** The daily P10 and P90 observed rates are blended the same
+   way and re-run through the forecast, which gives a 12-month cost band.
+
+In the DQX demo workspace, `dqx-studio-v2` is attributed **49.5 DBU / 1K queries**
+(daily P10–P90: 14–102). The naive shared-warehouse rate was 702.
+
+Required App setup:
+
+- SQL warehouse resource named `sql-warehouse` (`CAN_USE`), exposed as
+  `DATABRICKS_WAREHOUSE_ID`
+- App service principal: `USE CATALOG` on `system`, plus `USE SCHEMA` and `SELECT`
+  on `system.billing` and `system.query`
+
+Endpoints: `GET /api/calibration/sources?kind=app|dashboard|genie&days=30` and
+`GET /api/calibration/observe?kind=…&source_id=…&days=30`. In the static
+GitHub Pages build, the panel explains that calibration is only available in the App.
+
 ## Recommended calibration data
 
 Replace assumptions with observed values monthly:
@@ -325,6 +373,8 @@ backlogs, sustained resource pressure, or projected budget overruns.
 ├── app.js                    # Dynamic controls, charts, table, export
 ├── portfolio-model.js        # Seven-workload 12-month forecast engine
 ├── portfolio-model.test.js   # Portfolio model tests
+├── app.py                    # FastAPI wrapper and calibration endpoints
+├── calibration.py            # System-table attribution queries
 ├── model.js                  # Original QPM simulation engine
 ├── model.test.js             # Original spreadsheet regression tests
 ├── assets/
