@@ -12,6 +12,19 @@
   const select = (key, label, options, help = "") => ({
     key, label, options, help, type: "select",
   });
+  const northEuropePricing = [
+    select("pricingRegion", "Workspace pricing region", [
+      ["azure-north-europe", "Azure North Europe · $0.91/DBU"],
+    ], "Fixed to the PUMA workspace region"),
+    number("listPricePerDbu", "DBU list price", "$/DBU", .01, "Azure North Europe list price"),
+    number("discountRate", "Account discount rate", "%", .5),
+  ];
+  const complexityOptions = [
+    ["light", "Light · KPI tiles / Gold aggregates"],
+    ["medium", "Medium · multi-join dashboard"],
+    ["heavy", "Heavy · wide scans / write-back"],
+    ["extreme", "Extreme · shared app + ETL warehouse"],
+  ];
 
   const genieTokenFields = [
     number("promptsPerConversation", "Prompts per conversation", "", 1),
@@ -27,8 +40,7 @@
     number("queriesPerPrompt", "SQL queries / prompt", "", .1),
     number("sqlDbuPer1000Queries", "Observed SQL DBUs / 1K queries", "DBU", .01),
     number("dbuPerMillionTokens", "Observed Genie DBUs / 1M weighted tokens", "DBU", .01, "Calibrate from a representative pilot"),
-    number("listPricePerDbu", "DBU list price", "$/DBU", .01),
-    number("discountRate", "Account discount rate", "%", .5),
+    ...northEuropePricing,
   ];
   const genieOneTokenFields = genieTokenFields.filter(
     (field) => !["agentShare", "agentTurns"].includes(field.key)
@@ -105,14 +117,16 @@
         number("p95RuntimeSeconds", "p95 query runtime", "sec", 1),
         number("headroom", "Concurrency headroom", "%", 5),
       ]},
-      { title: "Calibration, storage & rates", fields: [
-        number("dbuPer1000Queries", "Observed DBUs / 1K queries", "DBU", .01),
-        number("listPricePerDbu", "DBU list price", "$/DBU", .01),
-        number("discountRate", "Account discount rate", "%", .5),
+      { title: "Query complexity & data", fields: [
+        select("queryComplexity", "Query complexity", complexityOptions,
+          "Light: KPI tiles; Medium: joins; Heavy: write-back; Extreme: app + ETL"),
+        number("dataScannedGbPerQuery", "Average data scanned / query", "GB", .1,
+          "Use Gold-table bytes read, not total lakehouse size"),
         number("initialStorageTb", "Dashboard source storage", "TB", .1),
         number("storageGrowth", "Monthly storage growth", "%", .5),
         number("storagePriceTb", "Storage list price / TB-month", "$", .1),
       ]},
+      { title: "Azure North Europe pricing", fields: northEuropePricing },
     ],
     apps: [
       { title: "App runtime", fields: [
@@ -121,19 +135,30 @@
         number("runtimeHoursDay", "Runtime hours / day", "hr", 1),
         number("activeDays", "Running days / month", "days", 1),
       ]},
+      { title: "Users & SQL dependency", fields: [
+        number("activeUsers", "Active users", "users", 1),
+        number("requestsPerUserDay", "Requests / user / day", "req", 1),
+        number("queriesPerRequest", "SQL queries / request", "", .5),
+        select("queryComplexity", "Query complexity", complexityOptions,
+          "Pick the closest recognizable workload pattern"),
+        number("dataScannedGbPerQuery", "Average data scanned / query", "GB", .1,
+          "Use bytes read from query history where available"),
+        number("monthlyGrowth", "Monthly demand growth", "%", .5),
+      ]},
+      { title: "Lakebase dependency", fields: [
+        select("lakebaseEnabled", "Lakebase needed?", [["no", "No"], ["yes", "Yes · write-back / OLTP"]]),
+        number("lakebaseDbuMonth", "Lakebase compute / month", "DBU", 10, "Ignored when Lakebase is No"),
+        number("lakebaseStorageCostMonth", "Lakebase storage / month", "$", 1, "Ignored when Lakebase is No"),
+      ]},
       { title: "AI dependency", fields: [
-        number("aiRequestsDay", "AI requests / day", "req", 10),
+        select("aiEnabled", "Embedded AI / Genie?", [["no", "No"], ["yes", "Yes"]]),
+        number("aiRequestsDay", "AI requests / day", "req", 10, "Ignored when embedded AI is No"),
         number("inputTokens", "Input tokens / request", "", 100),
         number("outputTokens", "Output tokens / request", "", 100),
         number("inputPriceMillion", "Input list price / 1M tokens", "$", .01),
         number("outputPriceMillion", "Output list price / 1M tokens", "$", .01),
-        number("monthlyGrowth", "Monthly demand growth", "%", .5),
       ]},
-      { title: "SQL dependency & rates", fields: [
-        number("sqlDbuMonth", "Baseline SQL DBUs / month", "DBU", 10),
-        number("listPricePerDbu", "DBU list price", "$/DBU", .01),
-        number("discountRate", "Account discount rate", "%", .5),
-      ]},
+      { title: "Azure North Europe pricing", fields: northEuropePricing },
     ],
     lakehouse: [
       { title: "Ingestion & retention", fields: [
@@ -150,11 +175,10 @@
         number("deletedRetentionDays", "Deleted-file retention", "days", 1),
         number("metadataOverhead", "Metadata & checkpoint overhead", "%", .5),
       ]},
-      { title: "Compute & rates", fields: [
+      { title: "Compute & Azure North Europe rates", fields: [
         number("computeDbuMonth", "Baseline compute DBUs / month", "DBU", 100),
         number("computeBaselineGbDay", "Baseline ingestion for those DBUs", "GB/day", 10),
-        number("listPricePerDbu", "DBU list price", "$/DBU", .01),
-        number("discountRate", "Account discount rate", "%", .5),
+        ...northEuropePricing,
         number("storagePriceTb", "Storage list price / TB-month", "$", .1),
       ]},
     ],
@@ -176,6 +200,12 @@
           { ...defaults[id], ...(saved?.values?.[id] || {}) },
         ])
       );
+      Object.values(mergedValues).forEach((values) => {
+        if (!values.pricingRegion || values.listPricePerDbu === 0) {
+          values.pricingRegion = "azure-north-europe";
+          values.listPricePerDbu = 0.91;
+        }
+      });
       return {
         workloadId: saved?.workloadId && WORKLOADS[saved.workloadId] ? saved.workloadId : "genie-one",
         scenario: saved?.scenario || "base",
@@ -318,6 +348,7 @@
     $("#primaryColumn").textContent = result.primaryLabel;
     $("#guidanceText").textContent = result.guidance;
     $("#caveatText").textContent = result.caveat;
+    renderWorkspaceBenchmark(result);
     $("#monthRows").innerHTML = result.rows.map((row) => `
       <tr>
         <td>${row.month}</td>
@@ -338,6 +369,50 @@
     $$(".scenario-control button").forEach((button) => {
       button.classList.toggle("active", button.dataset.scenario === state.scenario);
     });
+  }
+
+  function renderWorkspaceBenchmark(result) {
+    const card = $("#workspaceBenchmark");
+    if (!["apps", "aibi"].includes(state.workloadId)) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const monthOne = result.rows[0];
+    const actual = state.workloadId === "apps"
+      ? { appDbu: 365, sqlDbu: 5972.91, lakebaseDbu: 1015.11 }
+      : { queries: 50, avgRuntime: 3.12, p95Runtime: 6.96, scannedGb: 0.03 };
+    if (state.workloadId === "apps") {
+      const estimated = monthOne.appDbu + monthOne.sqlDbu + monthOne.lakebaseDbu;
+      const actualComparable = actual.appDbu + actual.sqlDbu +
+        (state.values.apps.lakebaseEnabled === "yes" ? actual.lakebaseDbu : 0);
+      const deviation = actualComparable
+        ? ((estimated - actualComparable) / actualComparable) * 100
+        : 0;
+      $("#benchmarkTitle").textContent = "DQX workspace app backtest";
+      $("#benchmarkDescription").textContent =
+        "Last 30 days from system.billing.usage, normalized to Azure North Europe pricing.";
+      $("#benchmarkRows").innerHTML = `
+        <tr><td>App runtime</td><td>${formatNumber(monthOne.appDbu, 1)} DBU</td><td>365.0 DBU</td></tr>
+        <tr><td>SQL warehouse</td><td>${formatNumber(monthOne.sqlDbu, 1)} DBU</td><td>5,972.9 DBU</td></tr>
+        <tr><td>Lakebase</td><td>${monthOne.lakebaseDbu ? `${formatNumber(monthOne.lakebaseDbu, 1)} DBU` : "Not enabled"}</td><td>1,015.1 DBU</td></tr>
+        <tr><td>Total comparable</td><td>${formatNumber(estimated, 1)} DBU</td><td>${formatNumber(actualComparable, 1)} DBU</td></tr>`;
+      $("#benchmarkDeviation").textContent =
+        `${deviation >= 0 ? "+" : ""}${formatNumber(deviation, 0)}% estimate vs actual`;
+    } else {
+      const estimated = monthOne.queries;
+      const deviation = ((estimated - actual.queries) / actual.queries) * 100;
+      $("#benchmarkTitle").textContent = "DQX workspace AI/BI backtest";
+      $("#benchmarkDescription").textContent =
+        "Dashboard-only traffic on the DQX warehouse; shared app and ETL SQL is excluded.";
+      $("#benchmarkRows").innerHTML = `
+        <tr><td>Dashboard SELECTs</td><td>${formatNumber(estimated, 0)}</td><td>50</td></tr>
+        <tr><td>Average runtime</td><td>${formatNumber(state.values.aibi.p95RuntimeSeconds / 2, 1)} sec planning proxy</td><td>${actual.avgRuntime} sec</td></tr>
+        <tr><td>p95 runtime</td><td>${formatNumber(state.values.aibi.p95RuntimeSeconds, 1)} sec</td><td>${actual.p95Runtime} sec</td></tr>
+        <tr><td>Data scanned</td><td>${formatNumber(estimated * state.values.aibi.dataScannedGbPerQuery, 2)} GB</td><td>${actual.scannedGb} GB</td></tr>`;
+      $("#benchmarkDeviation").textContent =
+        `${deviation >= 0 ? "+" : ""}${formatNumber(deviation, 0)}% query-volume deviation`;
+    }
   }
 
   function activatePage(page) {

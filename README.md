@@ -46,6 +46,11 @@ It only converts them when the user supplies an explicit calibration or price.
 - Pilot-calibrated token-to-DBU conversion
 - AI/BI concurrency and cluster planning
 - Databricks Apps Medium/Large runtime modeling
+- App and AI/BI query-complexity presets with recognizable workload examples
+- Data-scanned volume adjustment for SQL estimates
+- Optional Lakebase and embedded-AI dependencies for Apps
+- DQX workspace estimate-versus-actual backtesting
+- Azure North Europe pricing preset (`$0.91/DBU`) with a 50% discount default
 - Lakehouse ingestion, medallion amplification, retention, and time-travel storage
 - DBU list price and account discount inputs
 - List cost, discount savings, and net account cost
@@ -196,15 +201,19 @@ Interactive queries =
 
 Total queries = Interactive queries + Scheduled refresh queries
 
-Peak concurrency = Peak queries/second × p95 query runtime
+Volume factor =
+  max(0.25, √(Average GB scanned per query / Profile reference GB))
 
-Classic/Pro clusters =
-  ceil(Peak concurrency / 10 × (1 + Headroom rate))
+SQL DBUs =
+  Total queries / 1,000 × Complexity-profile DBUs per 1,000 queries
+  × Volume factor
+
+Peak concurrency = Peak queries/second × p95 query runtime
 ```
 
-The ten-query rule is a classic/pro planning heuristic from Databricks guidance.
-Serverless SQL warehouses use Intelligent Workload Management and should be
-calibrated with observed DBUs per 1,000 queries.
+Serverless SQL warehouses use Intelligent Workload Management. Complexity profiles are
+starting assumptions and should be calibrated with observed DBUs, runtime, bytes read,
+and query count.
 
 ### Databricks Apps
 
@@ -213,9 +222,22 @@ App DBUs =
   Running instances × Runtime hours/day × Active days/month
   × DBUs per running instance-hour
 
+App requests =
+  Active users × Requests per user per day × Active days
+
+SQL queries =
+  App requests × SQL queries per request
+
+Volume factor =
+  max(0.25, √(Average GB scanned per query / Profile reference GB))
+
+SQL DBUs =
+  SQL queries / 1,000 × Complexity-profile DBUs per 1,000 queries
+  × Volume factor
+
 AI tokens = AI requests × (Input tokens + Output tokens)
 
-Total DBUs = App DBUs + SQL dependency DBUs
+Total DBUs = App DBUs + SQL DBUs + Optional Lakebase DBUs
 ```
 
 Official App compute rates modeled by the estimator:
@@ -225,6 +247,38 @@ Official App compute rates modeled by the estimator:
 
 Model serving, SQL warehouses, jobs, databases, and storage are entered as separate
 dependencies.
+
+The planner ships with four explainable SQL profiles:
+
+- **Light** — KPI tiles and filtered Gold aggregates (`8 DBU / 1K queries`)
+- **Medium** — multi-join dashboards (`40 DBU / 1K queries`)
+- **Heavy** — wide scans, windows, and write-back validation (`180 DBU / 1K queries`)
+- **Extreme** — uncached scans or an app sharing a warehouse with ETL (`702 DBU / 1K queries`)
+
+These are planning defaults, not Databricks price guarantees. The Extreme profile is
+calibrated from the DQX demo workspace; replace every profile with observed
+`system.query.history` and `system.billing.usage` data for the target account.
+
+### DQX workspace backtest
+
+The Apps and AI/BI views include a last-30-day benchmark from workspace
+`7474659469216989`, captured on 26 September 2026:
+
+- `dqx-studio-v2`: `364.97 App DBU` (matches one always-on Medium replica)
+- primary DQX SQL warehouse: `5,972.91 SQL DBU`
+- workspace Lakebase: `1,015.11 DBU`
+- AI/BI dashboard queries on the same warehouse: `50 SELECTs`
+
+The benchmark deliberately separates dashboard traffic from app/ETL traffic. A shared
+warehouse can otherwise make a light dashboard appear hundreds of times more expensive
+than its own query history supports.
+
+### Regional pricing
+
+This deployment is configured for **Azure North Europe at `$0.91/DBU`**, with a
+default **50% account discount**. It does not use the `$0.70/DBU` Azure East US rate.
+Validate the effective SKU price and negotiated discount in
+`system.billing.list_prices` before using the result for chargeback.
 
 ### Lakehouse storage
 

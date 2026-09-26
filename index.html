@@ -36,6 +36,7 @@
             <span class="eyebrow">Serving layer planning</span>
             <h1>Forecast what your Databricks serving layer will consume.</h1>
             <p>Model demand from Genie, AI/BI, Apps, and other data consumers—then project tokens, DBUs, concurrency, and storage across the next 12 months.</p>
+            <div class="region-badge"><b>Azure North Europe</b><span>$0.91 / DBU list · 50% account discount default</span></div>
           </div>
           <div class="scenario-control" role="radiogroup" aria-label="Forecast scenario">
             <span>Demand scenario</span>
@@ -85,6 +86,24 @@
             </div>
 
             <div class="kpi-grid" id="summaryCards"></div>
+
+            <article class="benchmark-card" id="workspaceBenchmark" hidden>
+              <div class="benchmark-heading">
+                <div>
+                  <span class="eyebrow">Estimate vs actual</span>
+                  <h2 id="benchmarkTitle">DQX workspace backtest</h2>
+                  <p id="benchmarkDescription"></p>
+                </div>
+                <strong id="benchmarkDeviation"></strong>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Cost driver</th><th>Month 1 estimate</th><th>DQX actual · last 30 days</th></tr></thead>
+                  <tbody id="benchmarkRows"></tbody>
+                </table>
+              </div>
+              <small>Workspace 7474659469216989 · usage snapshot ending 26 Sep 2026 · source: system.billing.usage and system.query.history</small>
+            </article>
 
             <article class="chart-card">
               <div class="card-heading">
@@ -166,19 +185,22 @@
             </article>
             <article class="formula-card">
               <span>AI/BI</span>
-              <h3>Queries and concurrency</h3>
+              <h3>Queries, volume, and complexity</h3>
               <code>Queries = Viewers × Sessions/Day × Queries/Session × Active Days × Cache Miss% + Refresh Queries</code>
+              <code>Volume Factor = max(0.25, √(Scanned GB / Profile Reference GB))</code>
+              <code>SQL DBUs = Queries / 1K × Profile DBU Rate × Volume Factor</code>
               <code>Peak Concurrency = Peak QPS × p95 Runtime Seconds</code>
-              <code>Classic/Pro Clusters = ceil(Concurrency / 10 × (1 + Headroom%))</code>
-              <p>Serverless uses Intelligent Workload Management; cluster count is a classic/pro planning indicator.</p>
+              <p>Profiles: Light KPI tiles, Medium multi-join dashboards, Heavy wide scans/write-back, and Extreme shared app + ETL warehouses.</p>
             </article>
             <article class="formula-card">
               <span>Databricks Apps</span>
               <h3>Runtime and dependencies</h3>
               <code>App DBUs = Instances × Hours/Day × Active Days × DBU/Instance-Hour</code>
+              <code>SQL Queries = Users × Requests/User/Day × Active Days × Queries/Request</code>
+              <code>SQL DBUs = SQL Queries / 1K × Complexity Rate × Volume Factor</code>
+              <code>Total DBUs = App DBUs + SQL DBUs + Optional Lakebase DBUs</code>
               <code>AI Tokens = Requests × (Input Tokens + Output Tokens)</code>
-              <code>Total DBUs = App DBUs + SQL Dependency DBUs</code>
-              <p>Medium uses 0.5 DBU per running instance-hour; Large uses 1 DBU.</p>
+              <p>Medium uses 0.5 DBU per running instance-hour; Large uses 1 DBU. Lakebase is enabled only for write-back, state, or OLTP patterns.</p>
             </article>
             <article class="formula-card">
               <span>Lakehouse</span>
@@ -195,7 +217,7 @@
               <code>Total List Cost = DBU Cost + Token Cost + Storage Cost</code>
               <code>Discount Savings = Total List Cost × Discount Rate</code>
               <code>Net Cost = Total List Cost − Discount Savings</code>
-              <p>Use SKU, cloud, and region-specific rates from your contract or <code>system.billing.list_prices</code>.</p>
+              <p>This deployment defaults to Azure North Europe at $0.91/DBU and a 50% account discount. Replace with the account contract where applicable.</p>
             </article>
           </div>
         </section>

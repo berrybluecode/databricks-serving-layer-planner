@@ -38,9 +38,30 @@ assert.ok(high.rows[11].peakRpm > low.rows[11].peakRpm);
 const aibi = forecast("aibi");
 assert.ok(aibi.rows[0].queries > 0);
 assert.ok(aibi.rows[0].clusters >= 1);
+assert.equal(aibi.config.listPricePerDbu, 0.91);
+assert.equal(aibi.config.pricingRegion, "azure-north-europe");
+assert.equal(aibi.calibration.profile.label, "Medium");
 
 const apps = forecast("apps");
-assert.ok(Math.abs(apps.rows[0].appDbu - 729.6) < 1e-9);
+assert.ok(Math.abs(apps.rows[0].appDbu - 364.8) < 1e-9);
+assert.equal(apps.rows[0].sqlQueries, 12160);
+assert.ok(Math.abs(apps.rows[0].sqlDbu - 97.28) < 1e-9);
+assert.equal(apps.rows[0].lakebaseDbu, 0);
+assert.equal(apps.config.listPricePerDbu, 0.91);
+assert.equal(apps.config.discountRate, 50);
+
+const writebackApp = forecast("apps", {
+  ...WORKLOADS.apps.defaults,
+  activeUsers: 200,
+  requestsPerUserDay: 20,
+  queriesPerRequest: 4,
+  queryComplexity: "heavy",
+  dataScannedGbPerQuery: 20,
+  lakebaseEnabled: "yes",
+  lakebaseDbuMonth: 1000,
+});
+assert.ok(writebackApp.rows[0].sqlDbu > apps.rows[0].sqlDbu);
+assert.equal(writebackApp.rows[0].lakebaseDbu, 1000);
 
 const lakehouse = forecast("lakehouse");
 assert.ok(lakehouse.rows[11].storageTb > lakehouse.rows[0].storageTb);

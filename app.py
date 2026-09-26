@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 APP_NAME = "serving-layer-planner"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 STATIC_ROOT = Path(__file__).resolve().parent
 
 app = FastAPI(

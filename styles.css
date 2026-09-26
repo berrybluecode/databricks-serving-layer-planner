@@ -56,6 +56,12 @@ button { cursor: pointer; }
 h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.035em; }
 .hero h1, .methodology-hero h1 { max-width: 780px; font-size: clamp(32px, 4vw, 52px); line-height: 1.05; }
 .hero p, .methodology-hero p { margin: 14px 0 0; max-width: 760px; color: var(--muted); line-height: 1.6; }
+.region-badge {
+  width: max-content; max-width: 100%; margin-top: 15px; padding: 8px 11px;
+  display: flex; align-items: center; gap: 9px; border: 1px solid #ffb7ae;
+  border-radius: 9px; color: #7d2419; background: var(--teal-soft); font-size: 10px;
+}
+.region-badge span { color: var(--muted); }
 .scenario-control > span { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 600; text-align: right; }
 
 .workload-strip {
@@ -82,7 +88,7 @@ h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.03
   max-width: 1500px; margin: 0 auto; padding: 0 32px 64px;
   display: grid; grid-template-columns: 350px minmax(0, 1fr); gap: 20px; align-items: start;
 }
-.controls-panel, .chart-card, .kpi, .insight-card, .table-card, .assumptions-card, .references-card {
+.controls-panel, .chart-card, .benchmark-card, .kpi, .insight-card, .table-card, .assumptions-card, .references-card {
   border: 1px solid var(--line); border-radius: 16px; background: var(--paper);
 }
 .controls-panel { position: sticky; top: 91px; padding: 22px; max-height: calc(100vh - 110px); overflow: auto; }
@@ -128,6 +134,15 @@ h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.03
 .kpi span { min-height: 27px; color: var(--muted); font-size: 10px; line-height: 1.3; }
 .kpi strong { margin: 4px 0; font: 800 24px "Manrope"; }
 .kpi small { color: #94a1a4; font-size: 8px; }
+.benchmark-card { min-width: 0; padding: 20px; border-color: #c8d8e7; background: #f8fbff; }
+.benchmark-heading { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
+.benchmark-heading h2 { font-size: 18px; }
+.benchmark-heading p { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
+.benchmark-heading > strong {
+  padding: 8px 10px; border-radius: 8px; color: #003159; background: #e5f1fb;
+  font: 700 11px "Manrope";
+}
+.benchmark-card > small { display: block; margin-top: 11px; color: #7b8c92; font-size: 8px; }
 .chart-card, .table-card { min-width: 0; padding: 21px; box-shadow: 0 8px 30px rgba(25,55,55,.035); }
 .card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .card-heading h2 { font-size: 18px; }
@@ -147,7 +162,7 @@ h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.03
 .insight-card h3 { font-size: 16px; }
 .insight-card p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .table-hint { color: var(--muted); font-size: 9px; }
-.table-scroll { width: 100%; max-width: 100%; margin-top: 13px; overflow-x: auto; }
+.table-scroll { display: block; width: 100%; max-width: 100%; margin-top: 13px; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 10px; }
 th { padding: 9px 11px; color: var(--muted); background: #f4f7f5; text-align: right; font-weight: 600; }
 th:first-child { border-radius: 8px 0 0 8px; text-align: left; }
@@ -205,9 +220,12 @@ td:first-child { text-align: left; font-weight: 600; }
   .scenario-control > div { width: max-content; max-width: 100%; }
   .workload-strip { margin: 0 18px 18px; grid-template-columns: repeat(2, 1fr); }
   .planner-layout { display: block; padding: 0 18px 45px; }
+  .results-panel { width: 100%; max-width: 100%; overflow: hidden; }
   .controls-panel { position: static; max-height: none; margin-bottom: 18px; }
   .result-header { display: block; }
   .cost-summary { margin-top: 15px; }
+  .benchmark-heading { display: block; }
+  .benchmark-heading > strong { display: inline-block; margin-top: 12px; }
   .insight-grid { grid-template-columns: 1fr; }
   .methodology-page { padding: 45px 18px; }
   .method-grid, .assumptions-card { grid-template-columns: 1fr; }

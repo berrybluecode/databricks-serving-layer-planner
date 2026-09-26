@@ -6,6 +6,13 @@
     "Month 1", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6",
     "Month 7", "Month 8", "Month 9", "Month 10", "Month 11", "Month 12",
   ];
+  const COMPLEXITY_PROFILES = {
+    light: { label: "Light", dbuPer1000Queries: 8, referenceGbPerQuery: 0.1 },
+    medium: { label: "Medium", dbuPer1000Queries: 40, referenceGbPerQuery: 2 },
+    heavy: { label: "Heavy", dbuPer1000Queries: 180, referenceGbPerQuery: 20 },
+    extreme: { label: "Extreme", dbuPer1000Queries: 702, referenceGbPerQuery: 100 },
+  };
+  const DEFAULT_DBU_PRICE = 0.91;
 
   const WORKLOADS = {
     "genie-one": {
@@ -17,7 +24,8 @@
         inputTokens: 2500, outputTokens: 600, agentShare: 0, agentTurns: 1,
         surfaceMultiplier: 1, contextGrowth: 5, contextCap: 3,
         monthlyGrowth: 5, queriesPerPrompt: 1, sqlDbuPer1000Queries: 0,
-        dbuPerMillionTokens: 0, listPricePerDbu: 0, discountRate: 0,
+        dbuPerMillionTokens: 0, listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50,
+        pricingRegion: "azure-north-europe",
       },
     },
     "genie-agents": {
@@ -29,7 +37,8 @@
         inputTokens: 3500, outputTokens: 900, agentShare: 60, agentTurns: 4,
         surfaceMultiplier: 1.1, contextGrowth: 5, contextCap: 3,
         monthlyGrowth: 6, queriesPerPrompt: 1.5, sqlDbuPer1000Queries: 0,
-        dbuPerMillionTokens: 0, listPricePerDbu: 0, discountRate: 0,
+        dbuPerMillionTokens: 0, listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50,
+        pricingRegion: "azure-north-europe",
       },
     },
     "genie-code": {
@@ -41,7 +50,8 @@
         inputTokens: 6000, outputTokens: 1500, agentShare: 80, agentTurns: 5,
         surfaceMultiplier: 1.5, contextGrowth: 7, contextCap: 4,
         monthlyGrowth: 6, queriesPerPrompt: 0.5, sqlDbuPer1000Queries: 0,
-        dbuPerMillionTokens: 0, listPricePerDbu: 0, discountRate: 0,
+        dbuPerMillionTokens: 0, listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50,
+        pricingRegion: "azure-north-europe",
       },
     },
     "genie-api": {
@@ -54,7 +64,8 @@
         surfaceMultiplier: 1, contextGrowth: 5, contextCap: 3,
         monthlyGrowth: 8, peakFactor: 4, activeHours: 12,
         queriesPerPrompt: 1.2, sqlDbuPer1000Queries: 0,
-        dbuPerMillionTokens: 0, listPricePerDbu: 0, discountRate: 0,
+        dbuPerMillionTokens: 0, listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50,
+        pricingRegion: "azure-north-europe",
       },
     },
     aibi: {
@@ -65,9 +76,10 @@
         viewers: 500, sessionsPerDay: 1.5, queriesPerSession: 5,
         activeDays: 22, cacheMiss: 35, refreshQueriesMonth: 3000,
         activeHours: 10, peakFactor: 4, p95RuntimeSeconds: 8,
-        headroom: 25, dbuPer1000Queries: 0, listPricePerDbu: 0, discountRate: 0,
+        headroom: 25, queryComplexity: "medium", dataScannedGbPerQuery: 2,
+        listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50,
         initialStorageTb: 1, storageGrowth: 3, storagePriceTb: 0,
-        monthlyGrowth: 5,
+        monthlyGrowth: 5, pricingRegion: "azure-north-europe",
       },
     },
     apps: {
@@ -75,10 +87,14 @@
       label: "Databricks Apps",
       description: "App runtime plus AI and SQL dependencies",
       defaults: {
-        appSize: "medium", replicas: 2, runtimeHoursDay: 24, activeDays: 30.4,
-        aiRequestsDay: 500, inputTokens: 2000, outputTokens: 500,
+        appSize: "medium", replicas: 1, runtimeHoursDay: 24, activeDays: 30.4,
+        activeUsers: 5, requestsPerUserDay: 20, queriesPerRequest: 4,
+        queryComplexity: "light", dataScannedGbPerQuery: 0.1,
+        aiEnabled: "no", aiRequestsDay: 0, inputTokens: 2000, outputTokens: 500,
         inputPriceMillion: 0, outputPriceMillion: 0,
-        sqlDbuMonth: 0, listPricePerDbu: 0, discountRate: 0, monthlyGrowth: 5,
+        lakebaseEnabled: "no", lakebaseDbuMonth: 0, lakebaseStorageCostMonth: 0,
+        listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50, monthlyGrowth: 5,
+        pricingRegion: "azure-north-europe",
       },
     },
     lakehouse: {
@@ -90,7 +106,8 @@
         layerAmplification: 1.8, retentionDays: 365, copyMultiplier: 1,
         dailyRewrite: 0.5, deletedRetentionDays: 7, metadataOverhead: 2,
         computeDbuMonth: 2000, computeBaselineGbDay: 500, monthlyGrowth: 4,
-        listPricePerDbu: 0, discountRate: 0, storagePriceTb: 0,
+        listPricePerDbu: DEFAULT_DBU_PRICE, discountRate: 50, storagePriceTb: 0,
+        pricingRegion: "azure-north-europe",
       },
     },
   };
@@ -115,6 +132,17 @@
     const discountRate = Math.min(100, Math.max(0, n(config.discountRate))) / 100;
     const discountSavings = listCost * discountRate;
     return { listCost, discountSavings, cost: listCost - discountSavings };
+  }
+
+  function complexityRate(config) {
+    const profile = COMPLEXITY_PROFILES[config.queryComplexity] || COMPLEXITY_PROFILES.medium;
+    const scannedGb = Math.max(0.001, n(config.dataScannedGbPerQuery, profile.referenceGbPerQuery));
+    const volumeFactor = Math.max(0.25, Math.sqrt(scannedGb / profile.referenceGbPerQuery));
+    return {
+      profile,
+      volumeFactor,
+      effectiveDbuPer1000Queries: profile.dbuPer1000Queries * volumeFactor,
+    };
   }
 
   function genieForecast(config, scenarioMultiplier) {
@@ -187,6 +215,7 @@
   }
 
   function aibiForecast(config, scenarioMultiplier) {
+    const complexity = complexityRate(config);
     const rows = MONTH_NAMES.map((month, index) => {
       const interactiveBase =
         n(config.viewers) *
@@ -202,7 +231,7 @@
       const clusters = concurrentQueries
         ? Math.max(1, Math.ceil((concurrentQueries / 10) * (1 + n(config.headroom) / 100)))
         : 0;
-      const totalDbu = (queries / 1000) * n(config.dbuPer1000Queries);
+      const totalDbu = (queries / 1000) * complexity.effectiveDbuPer1000Queries;
       const storageTb = grow(n(config.initialStorageTb), config.storageGrowth, index);
       const storageListCost = storageTb * n(config.storagePriceTb);
       const { listCost, discountSavings, cost } = discountedCost(
@@ -221,60 +250,75 @@
       summary: [
         { label: "12-month SQL queries", value: formatCompact(sum(rows, "queries")) },
         { label: "Month 12 peak concurrency", value: formatNumber(rows[11].concurrentQueries, 1) },
-        { label: "Planning max clusters", value: String(rows[11].clusters) },
+        { label: `${complexity.profile.label} SQL profile`, value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
         {
           label: "Estimated SQL DBUs",
-          value: n(config.dbuPer1000Queries) ? formatCompact(sum(rows, "totalDbu")) : "Calibrate",
+          value: formatCompact(sum(rows, "totalDbu")),
         },
       ],
       guidance:
-        "Start with a Medium serverless SQL warehouse and validate Peak Queued Queries. The cluster estimate is for classic/pro planning only.",
+        `Start with a Medium serverless SQL warehouse. This estimate uses the ${complexity.profile.label} query profile and ${formatNumber(complexity.volumeFactor, 2)}× data-volume factor; validate against Peak Queued Queries and billing usage.`,
       caveat:
-        "Serverless uses Intelligent Workload Management; the documented 10 concurrent queries per cluster rule applies to classic and pro warehouses.",
+        "Complexity presets are planning benchmarks, not SKU guarantees. Recalibrate DBUs per 1,000 queries from a representative workspace and keep dashboard-only traffic separate from app or ETL traffic on shared warehouses.",
+      calibration: complexity,
     };
   }
 
   function appsForecast(config, scenarioMultiplier) {
     const appRate = config.appSize === "large" ? 1 : 0.5;
+    const complexity = complexityRate(config);
     const rows = MONTH_NAMES.map((month, index) => {
       const demandGrowth = Math.pow(1 + n(config.monthlyGrowth) / 100, index);
       const appDbu =
         n(config.replicas) * n(config.runtimeHoursDay) * n(config.activeDays) * appRate;
-      const requests =
-        n(config.aiRequestsDay) * n(config.activeDays) * scenarioMultiplier * demandGrowth;
+      const appRequests =
+        n(config.activeUsers) * n(config.requestsPerUserDay) * n(config.activeDays) *
+        scenarioMultiplier * demandGrowth;
+      const sqlQueries = appRequests * n(config.queriesPerRequest);
+      const sqlDbu = (sqlQueries / 1000) * complexity.effectiveDbuPer1000Queries;
+      const requests = config.aiEnabled === "yes"
+        ? n(config.aiRequestsDay) * n(config.activeDays) * scenarioMultiplier * demandGrowth
+        : 0;
       const inputTokens = requests * n(config.inputTokens);
       const outputTokens = requests * n(config.outputTokens);
       const tokenCost =
         (inputTokens / 1_000_000) * n(config.inputPriceMillion) +
         (outputTokens / 1_000_000) * n(config.outputPriceMillion);
-      const sqlDbu = n(config.sqlDbuMonth) * scenarioMultiplier * demandGrowth;
-      const totalDbu = appDbu + sqlDbu;
+      const lakebaseDbu = config.lakebaseEnabled === "yes"
+        ? n(config.lakebaseDbuMonth) * scenarioMultiplier * demandGrowth
+        : 0;
+      const lakebaseStorageCost = config.lakebaseEnabled === "yes"
+        ? n(config.lakebaseStorageCostMonth) * scenarioMultiplier * demandGrowth
+        : 0;
+      const totalDbu = appDbu + sqlDbu + lakebaseDbu;
       const { listCost, discountSavings, cost } = discountedCost(
         config,
         totalDbu,
-        tokenCost
+        tokenCost + lakebaseStorageCost
       );
       return {
-        month, appDbu, sqlDbu, totalDbu, requests, inputTokens, outputTokens,
+        month, appDbu, sqlDbu, lakebaseDbu, totalDbu, appRequests, sqlQueries,
+        requests, inputTokens, outputTokens,
         storageTb: 0, listCost, discountSavings, cost,
-        primary: (inputTokens + outputTokens) / 1_000_000,
+        primary: appRequests,
       };
     });
     const cpu = (config.appSize === "large" ? 4 : 2) * n(config.replicas);
     const memory = (config.appSize === "large" ? 12 : 6) * n(config.replicas);
     return {
       rows,
-      primaryLabel: "AI token demand (M)",
+      primaryLabel: "Application requests",
       summary: [
         { label: "12-month app DBUs", value: formatCompact(sum(rows, "appDbu")) },
-        { label: "12-month AI tokens", value: formatCompact(sum(rows, "inputTokens") + sum(rows, "outputTokens")) },
-        { label: "Provisioned CPU envelope", value: `${formatNumber(cpu, 0)} vCPU` },
-        { label: "Memory envelope", value: `${formatNumber(memory, 0)} GB` },
+        { label: "12-month SQL DBUs", value: formatCompact(sum(rows, "sqlDbu")) },
+        { label: "12-month Lakebase DBUs", value: formatCompact(sum(rows, "lakebaseDbu")) },
+        { label: `${complexity.profile.label} SQL profile`, value: `${formatNumber(complexity.effectiveDbuPer1000Queries, 1)} DBU / 1K` },
       ],
       guidance:
-        "App compute is provisioned while running. Model Serving, SQL warehouses, jobs, databases, and storage remain separate dependencies.",
+        `${formatNumber(cpu, 0)} vCPU and ${formatNumber(memory, 0)} GB are provisioned for the App. SQL is estimated from users × requests × queries using the ${complexity.profile.label} profile; Lakebase and AI are included only when enabled.`,
       caveat:
-        "Medium Apps use 0.5 DBU per running instance-hour; Large uses 1 DBU. Horizontal scaling supports 1–5 instances.",
+        "Medium Apps use 0.5 DBU per running instance-hour; Large uses 1 DBU. Query-complexity presets must be calibrated against system.query.history and system.billing.usage, especially when a warehouse is shared with ETL.",
+      calibration: complexity,
     };
   }
 
@@ -404,6 +448,8 @@
 
   root.PortfolioModel = {
     WORKLOADS,
+    COMPLEXITY_PROFILES,
+    DEFAULT_DBU_PRICE,
     SCENARIO_MULTIPLIERS,
     forecast,
     formatNumber,
