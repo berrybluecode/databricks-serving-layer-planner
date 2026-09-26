@@ -48,7 +48,7 @@ assert.equal(apps.rows[0].sqlQueries, 12160);
 assert.ok(Math.abs(apps.rows[0].sqlDbu - 97.28) < 1e-9);
 assert.equal(apps.rows[0].lakebaseDbu, 0);
 assert.equal(apps.config.listPricePerDbu, 0.91);
-assert.equal(apps.config.discountRate, 50);
+assert.equal(apps.config.discountRate, 0);
 
 const writebackApp = forecast("apps", {
   ...WORKLOADS.apps.defaults,

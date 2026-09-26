@@ -4,7 +4,7 @@
   const { WORKLOADS, forecast, formatNumber, formatCompact } = window.PortfolioModel;
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
-  const storageKey = "databricks-serving-layer-planner-v1";
+  const storageKey = "databricks-serving-layer-planner-v2";
 
   const number = (key, label, unit = "", step = 1, help = "") => ({
     key, label, unit, step, help, type: "number",
@@ -17,7 +17,7 @@
       ["azure-north-europe", "Azure North Europe · $0.91/DBU"],
     ], "Fixed to the PUMA workspace region"),
     number("listPricePerDbu", "DBU list price", "$/DBU", .01, "Azure North Europe list price"),
-    number("discountRate", "Account discount rate", "%", .5),
+    number("discountRate", "Account discount rate", "%", .5, "Enter the negotiated discount for this account"),
   ];
   const complexityOptions = [
     ["light", "Light · KPI tiles / Gold aggregates"],
@@ -201,10 +201,8 @@
         ])
       );
       Object.values(mergedValues).forEach((values) => {
-        if (!values.pricingRegion || values.listPricePerDbu === 0) {
-          values.pricingRegion = "azure-north-europe";
-          values.listPricePerDbu = 0.91;
-        }
+        values.pricingRegion = "azure-north-europe";
+        if (!values.listPricePerDbu) values.listPricePerDbu = 0.91;
       });
       return {
         workloadId: saved?.workloadId && WORKLOADS[saved.workloadId] ? saved.workloadId : "genie-one",
@@ -348,7 +346,6 @@
     $("#primaryColumn").textContent = result.primaryLabel;
     $("#guidanceText").textContent = result.guidance;
     $("#caveatText").textContent = result.caveat;
-    renderWorkspaceBenchmark(result);
     $("#monthRows").innerHTML = result.rows.map((row) => `
       <tr>
         <td>${row.month}</td>
@@ -369,50 +366,6 @@
     $$(".scenario-control button").forEach((button) => {
       button.classList.toggle("active", button.dataset.scenario === state.scenario);
     });
-  }
-
-  function renderWorkspaceBenchmark(result) {
-    const card = $("#workspaceBenchmark");
-    if (!["apps", "aibi"].includes(state.workloadId)) {
-      card.hidden = true;
-      return;
-    }
-    card.hidden = false;
-    const monthOne = result.rows[0];
-    const actual = state.workloadId === "apps"
-      ? { appDbu: 365, sqlDbu: 5972.91, lakebaseDbu: 1015.11 }
-      : { queries: 50, avgRuntime: 3.12, p95Runtime: 6.96, scannedGb: 0.03 };
-    if (state.workloadId === "apps") {
-      const estimated = monthOne.appDbu + monthOne.sqlDbu + monthOne.lakebaseDbu;
-      const actualComparable = actual.appDbu + actual.sqlDbu +
-        (state.values.apps.lakebaseEnabled === "yes" ? actual.lakebaseDbu : 0);
-      const deviation = actualComparable
-        ? ((estimated - actualComparable) / actualComparable) * 100
-        : 0;
-      $("#benchmarkTitle").textContent = "DQX workspace app backtest";
-      $("#benchmarkDescription").textContent =
-        "Last 30 days from system.billing.usage, normalized to Azure North Europe pricing.";
-      $("#benchmarkRows").innerHTML = `
-        <tr><td>App runtime</td><td>${formatNumber(monthOne.appDbu, 1)} DBU</td><td>365.0 DBU</td></tr>
-        <tr><td>SQL warehouse</td><td>${formatNumber(monthOne.sqlDbu, 1)} DBU</td><td>5,972.9 DBU</td></tr>
-        <tr><td>Lakebase</td><td>${monthOne.lakebaseDbu ? `${formatNumber(monthOne.lakebaseDbu, 1)} DBU` : "Not enabled"}</td><td>1,015.1 DBU</td></tr>
-        <tr><td>Total comparable</td><td>${formatNumber(estimated, 1)} DBU</td><td>${formatNumber(actualComparable, 1)} DBU</td></tr>`;
-      $("#benchmarkDeviation").textContent =
-        `${deviation >= 0 ? "+" : ""}${formatNumber(deviation, 0)}% estimate vs actual`;
-    } else {
-      const estimated = monthOne.queries;
-      const deviation = ((estimated - actual.queries) / actual.queries) * 100;
-      $("#benchmarkTitle").textContent = "DQX workspace AI/BI backtest";
-      $("#benchmarkDescription").textContent =
-        "Dashboard-only traffic on the DQX warehouse; shared app and ETL SQL is excluded.";
-      $("#benchmarkRows").innerHTML = `
-        <tr><td>Dashboard SELECTs</td><td>${formatNumber(estimated, 0)}</td><td>50</td></tr>
-        <tr><td>Average runtime</td><td>${formatNumber(state.values.aibi.p95RuntimeSeconds / 2, 1)} sec planning proxy</td><td>${actual.avgRuntime} sec</td></tr>
-        <tr><td>p95 runtime</td><td>${formatNumber(state.values.aibi.p95RuntimeSeconds, 1)} sec</td><td>${actual.p95Runtime} sec</td></tr>
-        <tr><td>Data scanned</td><td>${formatNumber(estimated * state.values.aibi.dataScannedGbPerQuery, 2)} GB</td><td>${actual.scannedGb} GB</td></tr>`;
-      $("#benchmarkDeviation").textContent =
-        `${deviation >= 0 ? "+" : ""}${formatNumber(deviation, 0)}% query-volume deviation`;
-    }
   }
 
   function activatePage(page) {

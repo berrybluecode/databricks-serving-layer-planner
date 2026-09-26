@@ -88,7 +88,7 @@ h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.03
   max-width: 1500px; margin: 0 auto; padding: 0 32px 64px;
   display: grid; grid-template-columns: 350px minmax(0, 1fr); gap: 20px; align-items: start;
 }
-.controls-panel, .chart-card, .benchmark-card, .kpi, .insight-card, .table-card, .assumptions-card, .references-card {
+.controls-panel, .chart-card, .kpi, .insight-card, .table-card, .assumptions-card, .references-card {
   border: 1px solid var(--line); border-radius: 16px; background: var(--paper);
 }
 .controls-panel { position: sticky; top: 91px; padding: 22px; max-height: calc(100vh - 110px); overflow: auto; }
@@ -134,15 +134,6 @@ h1, h2, h3 { margin: 0; font-family: "Manrope", sans-serif; letter-spacing: -.03
 .kpi span { min-height: 27px; color: var(--muted); font-size: 10px; line-height: 1.3; }
 .kpi strong { margin: 4px 0; font: 800 24px "Manrope"; }
 .kpi small { color: #94a1a4; font-size: 8px; }
-.benchmark-card { min-width: 0; padding: 20px; border-color: #c8d8e7; background: #f8fbff; }
-.benchmark-heading { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
-.benchmark-heading h2 { font-size: 18px; }
-.benchmark-heading p { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
-.benchmark-heading > strong {
-  padding: 8px 10px; border-radius: 8px; color: #003159; background: #e5f1fb;
-  font: 700 11px "Manrope";
-}
-.benchmark-card > small { display: block; margin-top: 11px; color: #7b8c92; font-size: 8px; }
 .chart-card, .table-card { min-width: 0; padding: 21px; box-shadow: 0 8px 30px rgba(25,55,55,.035); }
 .card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .card-heading h2 { font-size: 18px; }
@@ -224,8 +215,6 @@ td:first-child { text-align: left; font-weight: 600; }
   .controls-panel { position: static; max-height: none; margin-bottom: 18px; }
   .result-header { display: block; }
   .cost-summary { margin-top: 15px; }
-  .benchmark-heading { display: block; }
-  .benchmark-heading > strong { display: inline-block; margin-top: 12px; }
   .insight-grid { grid-template-columns: 1fr; }
   .methodology-page { padding: 45px 18px; }
   .method-grid, .assumptions-card { grid-template-columns: 1fr; }

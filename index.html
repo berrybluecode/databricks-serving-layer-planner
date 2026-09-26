@@ -36,7 +36,7 @@
             <span class="eyebrow">Serving layer planning</span>
             <h1>Forecast what your Databricks serving layer will consume.</h1>
             <p>Model demand from Genie, AI/BI, Apps, and other data consumers—then project tokens, DBUs, concurrency, and storage across the next 12 months.</p>
-            <div class="region-badge"><b>Azure North Europe</b><span>$0.91 / DBU list · 50% account discount default</span></div>
+            <div class="region-badge"><b>Azure North Europe</b><span>$0.91 / DBU list · enter your account discount</span></div>
           </div>
           <div class="scenario-control" role="radiogroup" aria-label="Forecast scenario">
             <span>Demand scenario</span>
@@ -86,24 +86,6 @@
             </div>
 
             <div class="kpi-grid" id="summaryCards"></div>
-
-            <article class="benchmark-card" id="workspaceBenchmark" hidden>
-              <div class="benchmark-heading">
-                <div>
-                  <span class="eyebrow">Estimate vs actual</span>
-                  <h2 id="benchmarkTitle">DQX workspace backtest</h2>
-                  <p id="benchmarkDescription"></p>
-                </div>
-                <strong id="benchmarkDeviation"></strong>
-              </div>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Cost driver</th><th>Month 1 estimate</th><th>DQX actual · last 30 days</th></tr></thead>
-                  <tbody id="benchmarkRows"></tbody>
-                </table>
-              </div>
-              <small>Workspace 7474659469216989 · usage snapshot ending 26 Sep 2026 · source: system.billing.usage and system.query.history</small>
-            </article>
 
             <article class="chart-card">
               <div class="card-heading">
@@ -217,7 +199,7 @@
               <code>Total List Cost = DBU Cost + Token Cost + Storage Cost</code>
               <code>Discount Savings = Total List Cost × Discount Rate</code>
               <code>Net Cost = Total List Cost − Discount Savings</code>
-              <p>This deployment defaults to Azure North Europe at $0.91/DBU and a 50% account discount. Replace with the account contract where applicable.</p>
+              <p>This deployment defaults to Azure North Europe at $0.91/DBU. Enter the account's negotiated discount; it starts at 0%.</p>
             </article>
           </div>
         </section>
