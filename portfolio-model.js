@@ -710,7 +710,9 @@
     const irr3 = irr([-implementation, year1 + implementation, year2, year3]);
     const extra = n(config.extraBudgetEur);
     const fade = clampPct(config.diminishingReturn, VALUE_DEFAULTS.diminishingReturn);
-    const expectedExtraValue = platformCost > 0 ? extra * (economic / platformCost) * fade : 0;
+    // Extra spend beyond today's run-rate cannot replicate more than one more copy of today's value.
+    const extraScale = platformCost > 0 ? Math.min(extra / platformCost, 1) : 0;
+    const expectedExtraValue = economic * extraScale * fade;
 
     const lines = [
       {

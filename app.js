@@ -757,7 +757,7 @@
         </dl>
         <div class="value-marginal">
           <strong>If we approve another ${formatEuro(value.extraBudgetEur || 0)}</strong>
-          <p>A reasonable extra benefit is ${formatEuro(value.expectedExtraValue)}, using the current BCR × ${formatPct(value.diminishingReturn)} diminishing returns. This is a forecast, not a commitment. Returns flatten when the next euro buys lower-value questions.</p>
+          <p>A reasonable extra benefit is ${formatEuro(value.expectedExtraValue)}, using the current BCR × ${formatPct(value.diminishingReturn)} diminishing returns, capped at one more copy of today's value when the extra budget exceeds today's spend. This is a forecast, not a commitment. Returns flatten when the next euro buys lower-value questions.</p>
         </div>
         <p class="value-fte">Theoretical time saved: ${formatNumber(value.theoreticalHours, 0)} hours (${formatNumber(value.fteReleased, 2)} FTE). After recapture: ${formatNumber(value.capturedFte, 2)} FTE of capacity. Theoretical € value ${formatEuro(value.theoreticalValue)} is <em>excluded</em> from ROI.</p>
         <div class="table-scroll">
