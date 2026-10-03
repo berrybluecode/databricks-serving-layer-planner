@@ -21,6 +21,7 @@
       </a>
       <nav class="nav-tabs" aria-label="Primary navigation">
         <button class="nav-tab active" data-page="planner">Planner</button>
+        <button class="nav-tab" data-page="value">CFO value</button>
         <button class="nav-tab" data-page="methodology">Methodology</button>
       </nav>
       <div class="top-actions">
@@ -36,14 +37,22 @@
             <span class="eyebrow">Serving layer planning</span>
             <h1>Forecast what your Databricks serving layer will consume.</h1>
             <p>Model demand from Genie, AI/BI, Apps, and other data consumers—then project tokens, DBUs, concurrency, and storage across the next 12 months.</p>
-            <div class="region-badge"><b>Azure North Europe</b><span>$0.91 / DBU list · enter your account discount</span></div>
+            <div class="region-badge" id="regionBadge">
+              <b>Azure North Europe</b>
+              <span id="regionPriceHint">SQL $0.91 · Genie SRTI $0.084</span>
+              <label class="discount-control" for="accountDiscount">Account discount</label>
+              <div class="input-wrap discount-input">
+                <input id="accountDiscount" type="number" min="0" max="100" step="0.5" inputmode="decimal" aria-label="Account discount rate">
+                <span class="input-unit">%</span>
+              </div>
+            </div>
           </div>
           <div class="scenario-control" role="radiogroup" aria-label="Forecast scenario">
-            <span>Demand scenario</span>
+            <span>User / demand mix</span>
             <div>
-              <button data-scenario="low">Low · 0.7×</button>
-              <button class="active" data-scenario="base">Base · 1.0×</button>
-              <button data-scenario="high">High · 1.5×</button>
+              <button data-scenario="light">Light</button>
+              <button class="active" data-scenario="regular">Regular</button>
+              <button data-scenario="power">Power</button>
             </div>
           </div>
         </div>
@@ -55,7 +64,6 @@
           <button data-workload="genie-api"><i>API</i><span><b>Genie API</b><small>Programmatic traffic</small></span></button>
           <button data-workload="aibi"><i>BI</i><span><b>AI/BI</b><small>Dashboards & SQL</small></span></button>
           <button data-workload="apps"><i>AP</i><span><b>Apps</b><small>Runtime & dependencies</small></span></button>
-          <button data-workload="lakehouse"><i>LH</i><span><b>Lakehouse</b><small>Compute & storage</small></span></button>
         </div>
 
         <div class="planner-layout">
@@ -84,6 +92,13 @@
                 <small id="month12Cost">Unit forecasts remain available without pricing</small>
               </div>
             </div>
+
+            <article class="value-card" id="plannerValueCard">
+              <div class="card-heading">
+                <div><span class="eyebrow">Cost → impact → financial value → ROI</span><h2>CFO value, not just consumption</h2></div>
+              </div>
+              <div id="valuePanel"></div>
+            </article>
 
             <div class="kpi-grid" id="summaryCards"></div>
 
@@ -124,6 +139,69 @@
         </div>
       </section>
 
+      <section class="page value-page" id="valuePage">
+        <div class="methodology-hero">
+          <span class="eyebrow">Financial decision support</span>
+          <h1>We are spending €X on Databricks. What measurable value comes back?</h1>
+          <p>Cost is forecast from consumption. Value is entered as business outcomes and then classified so a CFO can see cash, avoidance, capacity, margin, and risk separately. Hours × salary is never treated as money in the bank.</p>
+        </div>
+        <div id="valueBoard" class="value-board"></div>
+        <section class="formulas-section">
+          <div class="section-heading">
+            <span class="eyebrow">Research, not folklore</span>
+            <h2>How time becomes euros — and when it must not</h2>
+            <p>The default recapture and risk haircuts below are published consulting methods. Change them when you have a measured realization study. Until then, keep them conservative.</p>
+          </div>
+          <div class="formula-grid">
+            <article class="formula-card">
+              <span>Gartner 2025</span>
+              <h3>Time saved is not money saved</h3>
+              <p>74% of CFOs report employee time savings from AI. Only about 11% report financial value in 2025; roughly 5% cite cost savings and 6% cite revenue or profit. Hung LeHong: an extra 20 minutes a day is not financial value unless the company restructures the process or the team. Productivity leakage is often 10–30% by role — higher for executives, lower in queue-driven work such as contact centers.</p>
+              <p>Sources: Gartner Business Quarterly 1Q26; Gartner CIO conference coverage of LeHong &amp; Vogel; Gartner “How to Turn AI Productivity Leakage Into Meaningful Financial Returns” (ID 8331717).</p>
+            </article>
+            <article class="formula-card">
+              <span>Gartner GenAI value</span>
+              <h3>Leading indicator vs P&amp;L result</h3>
+              <p>Most early GenAI benefits are leading indicators: cycle time, quality, junior upskilling, employee experience. They become money only when used to reduce headcount or contractors, defer hiring, use more junior staff, cut service providers, or improve retention and conversion. “Do more with the same headcount” is cost avoidance, not a cost reduction.</p>
+              <p>Source: Gartner, “How to Calculate Business Value and Cost for Generative AI Use Cases” (ID 5188263).</p>
+            </article>
+            <article class="formula-card">
+              <span>Forrester TEI</span>
+              <h3>Recapture, burden, risk, NPV</h3>
+              <code>Valued hours = Hours saved × productivity recapture</code>
+              <code>Productivity € = Valued hours × fully loaded hourly rate × (1 − benefit risk)</code>
+              <p>Standard TEI recapture is 50% (30% appears in loosely coupled BI studies; 70% when a task is fully automated). Burden on salary is 35%. Benefits are risk-adjusted down 10–20%. Three-year present value uses a 10% discount rate. Flexibility is recorded, not booked as cash.</p>
+              <p>Sources: Forrester Total Economic Impact methodology; published TEI studies for Power Platform (50% recapture, 15% risk, 10% PV), KNIME (30% recapture), GitHub (50% recapture), Witboost (50%, 35% burden).</p>
+            </article>
+            <article class="formula-card">
+              <span>Labor economics</span>
+              <h3>Fully loaded rate, not sticker salary</h3>
+              <code>Hourly economic value ≈ (base + employer social charges + benefits) / productive hours</code>
+              <p>Eurostat labour-cost statistics put the 2024 EU average near €32/hour and Germany near €41/hour for the whole economy. Knowledge-worker fully loaded cost is higher. This planner defaults to €55/hour as a Western/Central Europe analyst-class planning figure. Replace it with Finance’s loaded rate. Productive hours default to 220 days × 8 hours.</p>
+              <p>Source: Eurostat labour cost surveys; Forrester TEI 35% burden convention.</p>
+            </article>
+            <article class="formula-card">
+              <span>Open FAIR / NIST</span>
+              <h3>Risk is expected loss, not a slogan</h3>
+              <code>Risk-adjusted value = incidents/year × € impact × Δ probability × realization</code>
+              <p>Unpriced “better decisions” stay leading indicators. Only enter €/decision when Finance has priced cycle time (for example working-capital days or campaign perishability).</p>
+            </article>
+            <article class="formula-card featured">
+              <span>Combination rules — avoid double counting</span>
+              <h3>Never add unlike benefits into one cash number</h3>
+              <code>Cash-like = Hard savings + Cost avoidance</code>
+              <code>Economic value = Cash-like + Recaptured productivity + Revenue margin + Risk-adjusted value</code>
+              <code>Budget ROI = (Cash-like − Platform cost) / Platform cost</code>
+              <code>TEI-style ROI = (Economic value − Platform cost) / Platform cost</code>
+              <code>BCR = Economic value / Platform cost</code>
+              <code>Payback months = (Implementation + annual platform cost) / (Economic value / 12)</code>
+              <code>NPV₃ = Σ (Net economicₜ / (1 + WACC)ᵗ)</code>
+              <p>The same hour cannot be productivity and avoided hiring. Gross revenue is never added to savings — only contribution margin. Theoretical hours × wage is shown and then excluded. TCO is platform + implementation. EVA is appropriate only when Finance assigns capital; this planner stops at NPV/IRR/TCO.</p>
+            </article>
+          </div>
+        </section>
+      </section>
+
       <section class="page methodology-page" id="methodologyPage">
         <div class="methodology-hero">
           <span class="eyebrow">Evidence-backed planning</span>
@@ -131,10 +209,11 @@
           <p>The planner never silently converts tokens, DBUs, warehouse concurrency, and storage into one another. Every conversion is visible and editable.</p>
         </div>
         <div class="method-grid">
-          <article><b>AI</b><h2>Genie products</h2><p>Forecast prompts and weighted token demand. Calibrate tokens to DBUs from a 14–30 day pilot because Databricks does not publish a universal conversion.</p></article>
-          <article><b>BI</b><h2>AI/BI</h2><p>Project interactive and refresh queries. Use p95 runtime for concurrency and measured DBUs per 1,000 queries for serverless planning.</p></article>
+          <article><b>AI</b><h2>Genie products</h2><p>Forecast from observed DBUs per active user per month by surface. Price Genie on the serverless real-time inference SKU. Apply the 150 DBU/user/month allowance and the One/Agents promo separately from SQL warehouse cost.</p></article>
+          <article><b>BI</b><h2>AI/BI</h2><p>Project executed queries from viewers, complexity, and concurrency. Caching is inside the observed DBU/query rate — do not ask for cache-miss share.</p></article>
           <article><b>AP</b><h2>Databricks Apps</h2><p>Combine provisioned app instance-hours with separately metered AI and SQL dependencies. Medium is 0.5 DBU/hour; Large is 1 DBU/hour.</p></article>
-          <article><b>LH</b><h2>Lakehouse</h2><p>Project ingestion, compression, medallion amplification, retention, rewrites, copies, metadata, and compute DBUs.</p></article>
+          <article><b>SKU</b><h2>Two DBU prices</h2><p>SQL warehouses use the SQL SKU (~$0.91 here). Genie uses serverless real-time inference (~$0.07–$0.084). Applying one list price to both overstates Genie by about 11–13×.</p></article>
+        </div>
         </div>
         <section class="formulas-section">
           <div class="section-heading">
@@ -146,33 +225,34 @@
             <article class="formula-card">
               <span>Shared growth model</span>
               <h3>Monthly demand</h3>
-              <code>Demandₘ = Baseline × Scenario × (1 + Growth%)ᵐ</code>
-              <p>Scenario is 0.7×, 1.0×, or 1.5× for low, base, and high.</p>
+              <code>Demandₘ = Baseline × Mix intensity × (1 + Growth%)ᵐ</code>
+              <p>Genie mix is light / regular / power users (p90 is 8–15× median). AI/BI and Apps still use 0.7× / 1.0× / 1.5× demand.</p>
             </article>
             <article class="formula-card">
-              <span>Genie One · Agents · Code · API</span>
-              <h3>Weighted token demand</h3>
-              <code>Prompts = Users × Prompts/User</code>
-              <code>Context = min(Cap, 1 + Growth/Msg × Avg Prior Msgs)</code>
-              <code>Turns = (1 − Agent Share) + Agent Share × Agent Turns</code>
-              <code>Tokens = Prompts × (Input × Context + Output) × Turns × Surface Factor</code>
-              <p>For API traffic, prompts start from requests/day × active days.</p>
+              <span>Genie One · Agents · Code</span>
+              <h3>DBUs per active user</h3>
+              <code>Gross Genie DBUs = Users × Mix × DBU/user/month × Language factor</code>
+              <code>Language factor = 1 + Non-English% × (2.9 − 1)</code>
+              <code>Free DBUs = min(Gross, Users × 150) during post-promo, or all human One/Agents DBUs during promo</code>
+              <code>Billed Genie DBUs = max(0, Gross − Free) × promo metering</code>
+              <p>Calibrate DBU/user/month from system.billing.usage using genie.surface and run_as. Billing rows have no token counts.</p>
             </article>
             <article class="formula-card">
-              <span>Genie calibration</span>
-              <h3>Tokens to DBUs</h3>
-              <code>Genie DBUs = Weighted Tokens / 1M × Observed DBUs per 1M</code>
-              <code>SQL DBUs = Prompts × Queries/Prompt / 1K × Observed SQL DBUs per 1K</code>
-              <p>The conversion is user-supplied because Databricks does not publish a universal token-to-DBU rate.</p>
+              <span>Genie commercial model</span>
+              <h3>SKU split and free tier</h3>
+              <code>Genie list cost = Billed Genie DBUs × SRTI list price</code>
+              <code>SQL list cost = SQL DBUs × SQL list price</code>
+              <code>Would-be cost = Gross Genie DBUs × SRTI list price + SQL list cost</code>
+              <p>Do not apply the SQL warehouse price (~$0.91) to Genie DBUs. Read both prices from system.billing.list_prices. GENIE_FREE_USAGE has no list price. API / service principals get no 150 DBU allowance.</p>
             </article>
             <article class="formula-card">
               <span>AI/BI</span>
               <h3>Queries, volume, and complexity</h3>
-              <code>Queries = Viewers × Sessions/Day × Queries/Session × Active Days × Cache Miss% + Refresh Queries</code>
+              <code>Queries = Viewers × Sessions/Day × Queries/Session × Active Days + Refresh Queries</code>
               <code>Volume Factor = max(0.25, √(Scanned GB / Profile Reference GB))</code>
               <code>SQL DBUs = Queries / 1K × Profile DBU Rate × Volume Factor</code>
               <code>Peak Concurrency = Peak QPS × p95 Runtime Seconds</code>
-              <p>Profiles: Light KPI tiles, Medium multi-join dashboards, Heavy wide scans/write-back, and Extreme shared app + ETL warehouses.</p>
+              <p>Profiles: Light KPI tiles, Medium multi-join dashboards, Heavy wide scans/write-back, and Extreme shared app + ETL warehouses. Cache hit rate is not a customer input.</p>
             </article>
             <article class="formula-card">
               <span>Databricks Apps</span>
@@ -192,32 +272,59 @@
               <code>Rate = w × Observed DBU/1K + (1 − w) × Preset DBU/1K</code>
               <p>Task-time attribution removes shared-warehouse distortion. P10 and P90 daily rates produce the cost band. k defaults to 5,000 queries.</p>
             </article>
-            <article class="formula-card">
-              <span>Lakehouse</span>
-              <h3>Physical storage</h3>
-              <code>New Stored TB = Raw TB × Compression × Layer Amplification</code>
-              <code>Time Travel TB = Active TB × Daily Rewrite% × Deleted Retention Days</code>
-              <code>Physical TB = (Active TB × Copies + Time Travel TB) × (1 + Metadata%)</code>
-              <p>The retention window keeps only monthly additions still covered by the selected policy.</p>
-            </article>
             <article class="formula-card featured">
               <span>Commercial model</span>
               <h3>List price, discount, and net cost</h3>
-              <code>DBU List Cost = DBUs × DBU List Price</code>
-              <code>Total List Cost = DBU Cost + Token Cost + Storage Cost</code>
+              <code>SQL List Cost = SQL DBUs × SQL List Price</code>
+              <code>Genie List Cost = Billed Genie DBUs × SRTI List Price</code>
               <code>Discount Savings = Total List Cost × Discount Rate</code>
               <code>Net Cost = Total List Cost − Discount Savings</code>
-              <p>This deployment defaults to Azure North Europe at $0.91/DBU. Enter the account's negotiated discount; it starts at 0%.</p>
+              <p>This deployment defaults to Azure North Europe SQL at $0.91/DBU and Genie SRTI at $0.084/DBU. The app overwrites those from system.billing.list_prices when it can.</p>
             </article>
           </div>
+        </section>
+        <section class="calibration-method">
+          <div class="section-heading">
+            <span class="eyebrow">Workspace calibration</span>
+            <h2>How observed workloads improve the estimate</h2>
+            <p>When this planner runs as a Databricks App, <strong>Calibrate from workspace</strong> pulls 7–90 days of system tables. For Genie it measures DBUs per active user per month by surface from billing. For SQL it still attributes warehouse DBUs by task time. The static GitHub Pages build cannot do this.</p>
+          </div>
+          <ol class="calibration-steps">
+            <li>
+              <h3>1. Classify the SQL to a source</h3>
+              <p>Each statement in <code>system.query.history</code> is tagged as a dashboard, Genie space, or App. Dashboards use <code>query_source.dashboard_id</code>. Genie uses <code>query_source.genie_space_id</code>. Apps use <code>executed_as</code> = the App service-principal client ID, which equals <code>usage_metadata.app_id</code> in <code>system.billing.usage</code>.</p>
+              <p>App SQL always runs as that service principal, so the planner can measure cost per query but not requests per user.</p>
+            </li>
+            <li>
+              <h3>2. Split shared warehouse DBUs by task time</h3>
+              <p>A naive warehouse DBU ÷ query count is misleading when Apps, dashboards, Genie, and ETL share a warehouse. Each day’s warehouse DBUs are allocated by compute time:</p>
+              <code>Source DBU/day = Warehouse DBU/day × Source task-ms/day ÷ Warehouse task-ms/day</code>
+              <code>Observed DBU / 1K = Σ Source DBU ÷ Σ Source queries × 1,000</code>
+              <p>Idle warehouse time that day is shared by whoever ran queries. That is a real cost. In the DQX demo workspace this dropped <em>dqx-studio-v2</em> from a naive 702 DBU / 1K to an attributed 49.5 DBU / 1K.</p>
+            </li>
+            <li>
+              <h3>3. Blend observation with the complexity preset</h3>
+              <p>A 15-query dashboard should not overwrite the Medium preset. Credibility weighting keeps small samples close to the planning default:</p>
+              <code>w = n ÷ (n + k)</code>
+              <code>Rate used = w × Observed DBU/1K + (1 − w) × Preset DBU/1K</code>
+              <p>n is observed queries. k defaults to 5,000 and is editable. 50 queries give about 1% weight to the observation. 100,000 queries give about 95%. The volume factor still applies to the preset half of the blend.</p>
+            </li>
+            <li>
+              <h3>4. Show a P10–P90 cost band</h3>
+              <p>Daily observed rates vary. The same blend is run once with the 10th-percentile daily rate and once with the 90th. Those two forecasts become the 12-month cost range under the headline number.</p>
+              <code>Low cost = forecast using blended P10 DBU / 1K</code>
+              <code>High cost = forecast using blended P90 DBU / 1K</code>
+              <p>Recalibrate monthly. Investigate if the observed rate moves more than 15% from the last calibration.</p>
+            </li>
+          </ol>
         </section>
         <article class="assumptions-card">
           <div><span class="eyebrow">Calibration loop</span><h2>Replace assumptions with actuals.</h2></div>
           <ol>
-            <li>Start with a low, base, and high scenario.</li>
-            <li>Run a 14–30 day pilot with representative users.</li>
-            <li>Measure DBUs in <code>system.billing.usage</code> and prices in <code>system.billing.list_prices</code>.</li>
-            <li>Measure Genie activity, SQL query history, AI Gateway tokens, App telemetry, and storage metrics.</li>
+            <li>Start with a light, regular, or power user mix and the complexity preset that matches the workload.</li>
+            <li>In the Databricks App, calibrate Genie from billing (DBU/user/month by surface) and SQL from query history.</li>
+            <li>Keep user counts as planning inputs. Do not ask customers for cache-miss share or token-to-DBU conversion.</li>
+            <li>Confirm SQL and Genie SRTI list prices separately in <code>system.billing.list_prices</code>.</li>
             <li>Recalibrate monthly and investigate forecast variance above 15%.</li>
           </ol>
         </article>
@@ -230,6 +337,9 @@
             <a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/compute-size" target="_blank" rel="noreferrer">Apps compute sizes</a>
             <a href="https://docs.databricks.com/aws/en/ai-gateway/usage-tracking" target="_blank" rel="noreferrer">AI Gateway usage</a>
             <a href="https://docs.databricks.com/aws/en/tables/size" target="_blank" rel="noreferrer">Table storage metrics</a>
+            <a href="https://www.gartner.com/en/documents/5188263" target="_blank" rel="noreferrer">Gartner GenAI value</a>
+            <a href="https://www.gartner.com/en/documents/8331717" target="_blank" rel="noreferrer">Gartner productivity leakage</a>
+            <a href="https://www.forrester.com/consulting/tei/" target="_blank" rel="noreferrer">Forrester TEI</a>
           </div>
         </article>
       </section>

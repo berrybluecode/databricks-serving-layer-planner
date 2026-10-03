@@ -39,17 +39,19 @@ It only converts them when the user supplies an explicit calibration or price.
 ## Features
 
 - Seven workload-specific sizing models
-- Low, base, and high demand scenarios
+- Light, regular, and power user mixes for Genie (p90 users 8–15× the median)
+- Separate SQL and Genie (serverless real-time inference) list prices
+- 150 DBU/user/month Genie free allowance and One/Agents promo horizon
 - Twelve monthly projections with compound growth
 - Editable assumptions in a dynamic sidebar
 - Weighted token-demand modeling for Genie products
-- Pilot-calibrated token-to-DBU conversion
+- Pilot-calibrated Genie DBUs per active user per month by surface
 - AI/BI concurrency and cluster planning
 - Databricks Apps Medium/Large runtime modeling
 - App and AI/BI query-complexity presets with recognizable workload examples
 - Data-scanned volume adjustment for SQL estimates
 - Optional Lakebase and embedded-AI dependencies for Apps
-- Azure North Europe pricing preset (`$0.91/DBU`) and a user-entered account discount
+- Azure North Europe SQL `$0.91/DBU` and Genie SRTI `$0.084/DBU`, overwritten from `system.billing.list_prices` in the App
 - Lakehouse ingestion, medallion amplification, retention, and time-travel storage
 - DBU list price and account discount inputs
 - List cost, discount savings, and net account cost
@@ -58,6 +60,9 @@ It only converts them when the user supplies an explicit calibration or price.
 - Responsive desktop and mobile layouts
 - Workspace calibration from system tables with task-time attribution, credibility
   blending, and a P10–P90 cost band (Databricks App only)
+- CFO value layer: hard savings, cost avoidance, recaptured productivity, revenue
+  margin, and risk-adjusted value, with Gartner/Forrester realization rules so
+  hours × wage is never booked as cash ROI
 - Static build needs no backend, build step, tracking, or external runtime dependency
 
 ## Screenshots
@@ -140,51 +145,34 @@ Demand[m] = Baseline × Scenario multiplier × (1 + Monthly growth rate)^m
 
 Scenario multipliers:
 
-- Low: `0.7×`
-- Base: `1.0×`
-- High: `1.5×`
-
-### Genie prompt and token demand
-
-```text
-Prompts = Active users × Prompts per user per month
-
-Context factor =
-  min(
-    Context cap,
-    1 + Context growth per message × Average prior messages
-  )
-
-Mode turns =
-  (1 − Agent-mode share)
-  + Agent-mode share × Internal turns per agent task
-
-Weighted tokens =
-  Prompts
-  × (Input tokens × Context factor + Output tokens)
-  × Mode turns
-  × Surface complexity multiplier
-```
-
-For Genie API, baseline prompts are:
-
-```text
-Prompts = Requests per day × Active days per month
-```
+- Light mix (Genie): 80% light / 18% regular / 2% power users, with tier multipliers 0.3× / 1× / 12×
+- Regular mix: 55% / 35% / 10%
+- Power mix: 20% / 40% / 40%
+- AI/BI and Apps still use 0.7× / 1.0× / 1.5× demand
 
 ### Genie DBU calibration
 
-Databricks does not publish a universal token-to-DBU conversion for Genie. Derive it
-from a representative 14–30 day pilot:
+Genie billing rows have no token counts. Calibrate from `system.billing.usage` using `usage_metadata.genie.surface` and `identity_metadata.run_as`:
 
 ```text
-Observed DBUs per 1M weighted tokens =
-  Pilot Genie DBUs / (Pilot weighted tokens / 1,000,000)
+Observed DBU / user / month =
+  Σ Genie DBUs (free + billed) / distinct run_as / months
 
-Forecast Genie DBUs =
-  Forecast weighted tokens / 1,000,000
-  × Observed DBUs per 1M weighted tokens
+Gross Genie DBUs =
+  Users × Mix intensity × DBU/user/month × Language factor
+
+Language factor = 1 + Non-English share × (2.9 − 1)
+
+Billed Genie DBUs =
+  0 for human Genie One / Agents during promo
+  max(0, Gross − Users × 150) otherwise
+  (API / service principals have no allowance)
+
+Genie list cost = Billed Genie DBUs × SRTI list price
+SQL list cost   = SQL DBUs × SQL list price
 ```
+
+Do not apply the SQL warehouse list price to Genie DBUs. `GENIE_FREE_USAGE` has no list price.
 
 SQL compute remains separate:
 
@@ -199,7 +187,7 @@ SQL DBUs =
 ```text
 Interactive queries =
   Viewers × Sessions per viewer per day × Queries per session
-  × Active days × Cache-miss share
+  × Active days
 
 Total queries = Interactive queries + Scheduled refresh queries
 
@@ -263,10 +251,9 @@ calibrated from the DQX demo workspace; replace every profile with observed
 
 ### Regional pricing
 
-This deployment is configured for **Azure North Europe at `$0.91/DBU`**. The account
-discount is an input and starts at **0%**. It does not use the `$0.70/DBU` Azure East US rate.
-Validate the effective SKU price and negotiated discount in
-`system.billing.list_prices` before using the result for chargeback.
+This deployment is configured for **Azure North Europe SQL at `$0.91/DBU`** and
+**Genie serverless real-time inference at `$0.084/DBU`**. The App overwrites both
+from `system.billing.list_prices`. The account discount starts at **0%**.
 
 ### Lakehouse storage
 
@@ -287,18 +274,18 @@ The retention window includes only monthly additions still inside the selected p
 ### List price, discount, and net cost
 
 ```text
-DBU list cost = DBUs × DBU list price
+SQL DBU list cost = SQL DBUs × SQL list price
+Genie DBU list cost = Billed Genie DBUs × SRTI list price
 
 Total list cost =
-  DBU list cost + Token list cost + Storage list cost
+  SQL DBU cost + Genie DBU cost + Token list cost + Storage list cost
 
 Discount savings = Total list cost × Account discount rate
 
 Net account cost = Total list cost − Discount savings
 ```
 
-Prices default to zero. Enter SKU-, cloud-, and region-specific rates from your
-contract or `system.billing.list_prices`.
+Read SKU prices from `system.billing.list_prices`. Do not price Genie DBUs with the SQL warehouse rate.
 
 ## Workspace calibration
 
@@ -385,10 +372,9 @@ backlogs, sustained resource pressure, or projected budget overruns.
 
 ## Important modeling boundaries
 
-- Weighted token demand is a planning heuristic, not a Databricks billable-token
-  statement.
-- Genie is billed through underlying LLM consumption in DBUs. A pilot calibration is
-  required before the estimator produces Genie DBUs.
+- Weighted token demand is a planning heuristic only. Genie cost is calibrated from DBUs per active user per month.
+- Genie is billed on the serverless real-time inference SKU. SQL warehouses use a different list price.
+- Human users get 150 free Genie DBUs per month. Until 31 Jan 2027, human Genie One and Agents usage is `GENIE_FREE_USAGE`.
 - Genie API is a channel into Genie Agents, not an independent billing surface.
 - Service-principal Genie usage can have different allowance treatment from identified
   human users.

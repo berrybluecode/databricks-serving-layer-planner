@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 import calibration
 
 APP_NAME = "serving-layer-planner"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.4.0"
 STATIC_ROOT = Path(__file__).resolve().parent
 
 app = FastAPI(
@@ -33,6 +33,15 @@ def _validate_kind(kind: str) -> str:
     if kind not in calibration.KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {sorted(calibration.KINDS)}")
     return kind
+
+
+@app.get("/api/pricing")
+def pricing() -> dict:
+    """Return current SQL and Genie (SRTI) list prices from system.billing.list_prices."""
+    try:
+        return calibration.list_prices()
+    except Exception as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @app.get("/api/calibration/sources")
